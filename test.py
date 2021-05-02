@@ -1,4 +1,7 @@
-import matplotlib.pyplot as plt
+import numpy as np
 
-plt.plot(1,1)
-plt.show()
+clo = [[0,1],[1,0]]
+clx = [[0,0],[1,1]]
+for pt in clo + clx:
+    t = 2*int(pt in clo) - 1
+    print(t)

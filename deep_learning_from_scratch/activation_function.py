@@ -17,7 +17,7 @@ def softmax(x):
     return np.exp(x)/np.sum(np.exp(x))
 
 def softmax2(x):
-    c = np.max(x)
+    c = np.max(x) # exponential의 발산을 막기 위함.
     expx = np.exp(x - c)
     return expx/np.sum(expx)
 
