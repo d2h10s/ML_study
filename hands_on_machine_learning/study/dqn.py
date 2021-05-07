@@ -10,10 +10,14 @@ input_shape = [4]
 n_outputs = 2
 replay_buffer = deque(maxlen=2000)
 
-model = keras.models.Sequential([keras.layers.Dense(32, activation="elu", input_shape=input_shape),
+model = keras.models.Sequential([
+        keras.layers.Dense(32, activation="elu", input_shape=input_shape),
         keras.layers.Dense(32, activation="elu"),
         keras.layers.Dense(32, activation="elu"),
         keras.layers.Dense(n_outputs)])
+
+target = keras.models.clone_model(model)
+target.set_weights(model.get_weights())
 
 def epsilon_greedy_policy(state, elsilon=0):
     if np.random.rand() < epsilon:
@@ -25,7 +29,9 @@ def epsilon_greedy_policy(state, elsilon=0):
 def sample_experiences(batch_size):
     indices = np.random.randint(len(replay_buffer), size = batch_size)
     batch = [replay_buffer[index] for index in indices]
-    states, actions, rewards, next_states, dones = [np.array([experience[field_index] for experience in batch]) for field_index in range(5)]
+    states, actions, rewards, next_states, dones = \
+        [np.array([experience[field_index] for experience in batch]) \
+            for field_index in range(5)]
     return states, actions, rewards, next_states, dones
 
 def play_one_step(env, state, epsilon):
@@ -42,7 +48,7 @@ loss_fn = keras.losses.mean_squared_error
 def training_step(batch_size):
     experiences = sample_experiences(batch_size)
     states, actions, rewards, next_states, dones = experiences
-    next_Q_values = model.predict(next_states)
+    next_Q_values = target.predict(next_states)
     max_next_Q_values = np.max(next_Q_values, axis=1)
     target_Q_values = (rewards + (1 - dones) * discount_factor * max_next_Q_values)
     target_Q_values = target_Q_values.reshape(-1, 1)
@@ -68,6 +74,8 @@ for episode in range(600):
     all_reward.append(sum_reward)
     if episode > 50:
         training_step(batch_size)
+    if episode % 50 == 0:
+        target.set_weights(model.get_weights())
 
 plt.plot(range(len(all_reward)), all_reward)
 plt.show()
