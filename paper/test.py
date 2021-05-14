@@ -3,7 +3,8 @@ import numpy as np
 import gym
 import time
 
-log_dir = './logs/test_'+str(time.ctime()[-13:-4])
-log_dir = './logs/test_'+time.strftime('%m-%d_%H:%M:%S', time.localtime())
-
-print(log_dir)
+env = gym.make('Acrobot-v1')
+env.reset()
+while True:
+    env.step(1)
+    env.render()

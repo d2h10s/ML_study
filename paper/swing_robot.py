@@ -10,55 +10,29 @@ import cv2
 # Learning CONSTANT VALUE
 GAMMA = .99
 MAX_STEP = int(2e3)
-SEED = 3
+SEED = 3 # random seed
 EPS = np.finfo(np.float32).eps.item()
-DONE_CONDITION = 100
-
+MAX_DONE = 100 # condition which terminate episode
+MAX_REWARD = 5000 # condition which terminate learning
+ALPHA = 0.05 # for the exponential moving everage
 # Video Variables
 fourcc = cv2.VideoWriter_fourcc(*'DIVX')
 blue_color = (255, 0, 0) # BGR
 font = cv2.FONT_HERSHEY_SIMPLEX
 
 
-# this can make custom environment
-def init_env(uniform,custom):
-    env = gym.make('Acrobot-v2')
-    # make every environment have uniform random seed
-    if uniform:
-        env.seed(SEED)
-        env.action_space.seed(SEED)
-        env.observation_space.seed(SEED)
-    # modify constant of envrionment
-    if custom:
-        env.LINK_LENGTH_1 = 0.45  # [m]
-        env.LINK_LENGTH_2 = 0.10  # [m]
-        env.LINK_MASS_1 = 0.3  #: [kg] mass of link 1
-        env.LINK_MASS_2 = 0.4  #: [kg] mass of link 2
-        env.LINK_COM_POS_1 = .225  #: [m] position of the center of mass of link 1
-        env.LINK_COM_POS_2 = .05  #: [m] position of the center of mass of link 2
-        env.LINK_MOI = 1.
-        env.MAX_VEL_1 = 4 * np.pi #: [rad/sec]
-        env.MAX_VEL_2 = 58 * 2 * np.pi / 60 #: [rad/sec] 9 * np.pi
-        env.AVAIL_TORQUE = [-1., 0., +1]
-    return env
-
 # Environment creation
-env = init_env(custom=False, uniform=True)
+env = gym.make('Acrobot-v2')
+# make every environment have uniform random seed\
+env.seed(SEED)
+env.action_space.seed(SEED)
+env.observation_space.seed(SEED)
+
 state = env.reset()
 observation_n = env.observation_space.shape
 action_n = env.action_space.n
-hidden_n = 64
+hidden_n = 128
 img_shape = env.render('rgb_array').shape[:2]
-
-# A2C model Layer 
-input_layer  = layers.Input(shape=observation_n)
-fc1_layer    = layers.Dense(hidden_n, activation='relu', name='Dense1')(input_layer)
-fc2_layer    = layers.Dense(hidden_n, activation='relu', name='Dense2')(fc1_layer)
-actor_layer  = layers.Dense(action_n, activation='softmax', name='Actor')(fc2_layer)
-critic_layer = layers.Dense(1, activation='tanh', name='Critic')(fc2_layer)
-
-model = keras.Model(inputs=input_layer,outputs=[actor_layer, critic_layer])
-print(model.summary())
 
 # Settings for Summary Writer of Tensorboard
 # ex) Acrobot-v1_'05-14_11:04:29
@@ -66,64 +40,98 @@ now_time = time.strftime('%m-%d_%Hh-%Mm', time.localtime())
 log_dir = os.path.join(os.curdir,'logs/Acrobot-v1_'+now_time)
 summary_writer = tf.summary.create_file_writer(log_dir)
 
-optimizer = optimizers.Adam(learning_rate=1e-3)
+'''
+input_layer  = layers.Input(shape=observation_n)
+conv1_layer  = layers.Conv2D(32, activation='relu', name='common_1')(input_layer)
+conv2_layer  = layers.Conv2D(64, activation='relu', name='common_2')(conv1_layer)
+conv3_layer  = layers.Conv2D(64, activation='relu', name='common_3')(conv2_layer)
+actor1_layer  = layers.Dense(action_n, activation='relu', name='Actor1')(conv3_layer) # 0 <= softmax <= 1
+actor2_layer  = layers.Dense(action_n, activation='softmax', name='Actor2')(actor1_layer) # 0 <= softmax <= 1
+critic1_layer  = layers.Dense(1, activation='relu', name='Critic1')(conv3_layer) # 0 <= softmax <= 1
+critic2_layer = layers.Dense(1, name='Critic2')(critic1_layer)
+model = keras.Model(inputs=input_layer,outputs=[actor2_layer, critic2_layer])
+'''
+# A2C model Layer 
+input_layer  = layers.Input(shape=observation_n)
+fc1_layer    = layers.Dense(hidden_n, activation='relu', name='Dense1')(input_layer)
+fc2_layer    = layers.Dense(hidden_n, activation='relu', name='Dense2')(fc1_layer)
+actor_layer  = layers.Dense(action_n, activation='softmax', name='Actor')(fc2_layer) # 0 <= softmax <= 1
+critic_layer = layers.Dense(1, name='Critic')(fc2_layer)
+
+model = keras.Model(inputs=input_layer,outputs=[actor_layer, critic_layer])
+keras.utils.plot_model(model, os.path.join(log_dir, "A2C_model_with_shape_info.png"), show_shapes=True)
+print(model.summary())
+
+
+# epsilone shouldn't too big
+optimizer = optimizers.Adam(learning_rate=1e-3, epsilon=1e-3)
 huber_loss = keras.losses.Huber()
+
+
+
+# Learning data buffer
 action_probs_buffer = []
 critic_value_buffer = []
 rewards_history = []
 running_reward = 0
-episode_count = 0
+episode = 0
 
 while True:
     state = env.reset()
-    
     episode_reward = 0
-    torque = 0
-    done_counter = 0
-    img = env.render(mode='rgb_array')
+    done_count = 0
     with tf.GradientTape() as tape:
-        video_dir = os.path.join(os.curdir,'logs','Acrobot-v1_'+now_time,f'learning(episode{episode_count}).avi')
-        if episode_count % 100 == 0:
+        video_dir = os.path.join(os.curdir,'logs', 'video', 'Acrobot-v1_'+now_time,f'learning(episode{episode}).avi')
+        if episode % 100 == 0:
             videoWriter = cv2.VideoWriter(video_dir,fourcc, 15, img_shape)
         for step in range(1, MAX_STEP+1):
-            state = tf.convert_to_tensor(state)
-            state = tf.expand_dims(state, axis=0)
+            state = tf.convert_to_tensor([state])
+
+            # action_probs = tf.Tensor([[0.24805994 0.44228017 0.30965984]]
+            # critic_value = tf.Tensor([[-0.24254985]]
             action_probs, critic_value = model(state)
-            critic_value_buffer.append(critic_value[0, 0])
-
             action = np.random.choice(action_n, p=np.squeeze(action_probs))
-            action_probs_buffer.append(tf.math.log(action_probs[0, action]))
+            action_probs_buffer.append(action_probs[0, action])
+            critic_value_buffer.append(critic_value[0, 0])
+            
             state, _, done, _ = env.step(action)
-            radian = np.arctan2(state[1], state[0]) # angle of link1
-            reward = np.abs(radian)
-
+            # tan(theta1) [rad] = arctan(sin(theta1)/cos(theta1))
+            reward = state[0] # cos(theta_1), -1 <= cos(theta_1) <= 1
+ 
             rewards_history.append(reward)
             episode_reward += reward
 
-            if episode_count % 10 == 0:
+            # Exponential Moving Everage
+            # this is used to compare the end condition
+            if episode == 0:
+                running_reward = episode_reward
+            else:
+                running_reward = ALPHA * episode_reward + (1 - ALPHA) * running_reward
+
+            if episode % 100 == 0:
                 with summary_writer.as_default():
-                    tf.summary.scalar(f'angle of link1(episode{episode_count})', np.rad2deg(radian), step=step)
-            if episode_count % 100 == 0:
+                    radian = np.arctan2(state[1], state[0]) # angle of link1
+                    tf.summary.scalar(f'angle of link1 at episode{episode}', np.rad2deg(radian), step=step)
+                    tf.summary.scalar(f'reward=cos(th1) at episode{episode}', np.rad2deg(radian), step=step)
                 img = env.render(mode='rgb_array').astype(np.float32)
-                cv2.putText(img=img,text=f'Episode({episode_count:04})    Step({step:04})', org=(50,50), fontFace=font, fontScale=1,color=blue_color, thickness=1, lineType=0)
+                cv2.putText(img=img,text=f'Episode({episode:05})    Step({step:04})',\
+                     org=(5,50), fontFace=font, fontScale=1,color=blue_color, thickness=1, lineType=0)
                 videoWriter.write(img.astype(np.ubyte))
 
-            if state[0] < 0.01 :
-                done_counter += 1
+            if state[0] < 0.035:
+                done_count += 1
             else:
-                done_counter = 0
-            if done_counter > 1000:
-                break
-        videoWriter.release()
+                done_count = 0
 
-        if episode_count == 0:
-            running_reward = episode_reward
-        else:
-            running_reward = 0.05 * episode_reward + (1 - 0.05) * running_reward
+            if done_count > MAX_DONE:
+                break
+        if episode % 100 == 0:
+            videoWriter.release()
+
+        action_probs_buffer = tf.math.log(action_probs_buffer)
 
         with summary_writer.as_default():
-            tf.summary.scalar('reward of episode', episode_reward, step=episode_count)
-            tf.summary.scalar('running reward of episode', running_reward, step=episode_count)
+            tf.summary.scalar('reward of episodes', episode_reward, step=episode)
         
         Returns = []
         discounted_sum = 0
@@ -147,22 +155,27 @@ while True:
             )
 
         loss_value = sum(actor_losses) + sum(critic_losses)
+        '''
+        tape.gradient(loss, x) means derivative loss of input tensor x
+        '''
         grads = tape.gradient(loss_value, model.trainable_variables)
         optimizer.apply_gradients(zip(grads, model.trainable_variables))
 
-        action_probs_buffer.clear()
+        action_probs_buffer = []
         critic_value_buffer.clear()
         rewards_history.clear()
 
         with summary_writer.as_default():
-            tf.summary.scalar('losses', loss_value, step=episode_count)
+            tf.summary.scalar('losses', loss_value, step=episode)
+        if episode % 100 == 0:
+            model.save(os.path.join(log_dir, 'model', f'A2C_model_epi{episode:05}_{now_time}'))
 
-    print(f"running reward: {running_reward:.2f} at episode {episode_count}")
+    print(f"running reward: {running_reward:.2f} at episode {episode} --time:{time.strftime('%m-%d_%Hh-%Mm', time.localtime())}")
 
-    if running_reward > (5000):  # Co.ndition to consider the task solved
-        print(f"Solved at episode {episode_count}!")
+    if running_reward > MAX_REWARD:  # Co.ndition to consider the task solved
+        print(f"Solved at episode {episode} with running reward {running_reward}")
         break
-    episode_count += 1
+    episode += 1
 
 
 state = env.reset()
