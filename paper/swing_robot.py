@@ -15,6 +15,8 @@ EPS = np.finfo(np.float32).eps.item()
 MAX_DONE = 100 # condition which terminate episode
 MAX_REWARD = 5000 # condition which terminate learning
 ALPHA = 0.05 # for the exponential moving everage
+IS_CPU = not tf.test.is_gpu_available()
+
 # Video Variables
 fourcc = cv2.VideoWriter_fourcc(*'DIVX')
 blue_color = (255, 0, 0) # BGR
@@ -32,13 +34,15 @@ state = env.reset()
 observation_n = env.observation_space.shape
 action_n = env.action_space.n
 hidden_n = 128
-img_shape = env.render('rgb_array').shape[:2]
+if IS_CPU:
+    img_shape = env.render('rgb_array').shape[:2]
 
 # Settings for Summary Writer of Tensorboard
 # ex) Acrobot-v1_'05-14_11:04:29
-now_time = time.strftime('%m-%d_%Hh-%Mm', time.localtime())
+now_time = time.strftime('%m-%d_%Hh-%Mm-%Ss', time.localtime())
 log_dir = os.path.join(os.curdir,'logs/Acrobot-v1_'+now_time)
 summary_writer = tf.summary.create_file_writer(log_dir)
+os.makedirs(os.path.join(log_dir, 'video'))
 
 '''
 input_layer  = layers.Input(shape=observation_n)
@@ -81,8 +85,8 @@ while True:
     episode_reward = 0
     done_count = 0
     with tf.GradientTape() as tape:
-        video_dir = os.path.join(os.curdir,'logs', 'video', 'Acrobot-v1_'+now_time,f'learning(episode{episode}).avi')
-        if episode % 100 == 0:
+        if IS_CPU and episode % 100 == 0:
+            video_dir = os.path.join(log_dir, 'video', f'learning(episode{episode}).avi')
             videoWriter = cv2.VideoWriter(video_dir,fourcc, 15, img_shape)
         for step in range(1, MAX_STEP+1):
             state = tf.convert_to_tensor([state])
@@ -96,7 +100,7 @@ while True:
             
             state, _, done, _ = env.step(action)
             # tan(theta1) [rad] = arctan(sin(theta1)/cos(theta1))
-            reward = state[0] # cos(theta_1), -1 <= cos(theta_1) <= 1
+            reward = state[0] - state[4]/env.MAX_VEL_1 # cos(theta_1), -1 <= cos(theta_1) <= 1
  
             rewards_history.append(reward)
             episode_reward += reward
@@ -107,17 +111,13 @@ while True:
                 running_reward = episode_reward
             else:
                 running_reward = ALPHA * episode_reward + (1 - ALPHA) * running_reward
-
-            if episode % 100 == 0:
-                with summary_writer.as_default():
-                    radian = np.arctan2(state[1], state[0]) # angle of link1
-                    tf.summary.scalar(f'angle of link1 at episode{episode}', np.rad2deg(radian), step=step)
-                    tf.summary.scalar(f'reward=cos(th1) at episode{episode}', np.rad2deg(radian), step=step)
+            
+            if IS_CPU and episode % 100 == 0:
                 img = env.render(mode='rgb_array').astype(np.float32)
                 cv2.putText(img=img,text=f'Episode({episode:05})    Step({step:04})',\
                      org=(5,50), fontFace=font, fontScale=1,color=blue_color, thickness=1, lineType=0)
                 videoWriter.write(img.astype(np.ubyte))
-
+                
             if state[0] < 0.035:
                 done_count += 1
             else:
@@ -125,7 +125,7 @@ while True:
 
             if done_count > MAX_DONE:
                 break
-        if episode % 100 == 0:
+        if IS_CPU and episode % 100 == 0:
             videoWriter.release()
 
         action_probs_buffer = tf.math.log(action_probs_buffer)
@@ -168,19 +168,22 @@ while True:
         with summary_writer.as_default():
             tf.summary.scalar('losses', loss_value, step=episode)
         if episode % 100 == 0:
-            model.save(os.path.join(log_dir, 'model', f'A2C_model_epi{episode:05}_{now_time}'))
+            model.save(os.path.join(log_dir, f'tf_model'))
 
     print(f"running reward: {running_reward:.2f} at episode {episode} --time:{time.strftime('%m-%d_%Hh-%Mm', time.localtime())}")
-
+    with summary_writer.as_default():
+            tf.summary.scalar('running reward of episodes', running_reward, step=episode)
     if running_reward > MAX_REWARD:  # Co.ndition to consider the task solved
         print(f"Solved at episode {episode} with running reward {running_reward}")
         break
+
     episode += 1
 
 
 state = env.reset()
-video_dir = os.path.join(os.curdir,'logs','Acrobot-v1_'+now_time,f'test.avi')
-videoWriter = cv2.VideoWriter(video_dir,fourcc, 15, img_shape)
+if IS_CPU:
+    video_dir = os.path.join(os.curdir,'logs','Acrobot-v1_'+now_time,f'test.avi')
+    videoWriter = cv2.VideoWriter(video_dir,fourcc, 15, img_shape)
 for step in range(1, MAX_STEP):
     state = tf.convert_to_tensor(state)
     state = tf.expand_dims(state, 0)
@@ -196,7 +199,8 @@ for step in range(1, MAX_STEP):
     with summary_writer.as_default():
         tf.summary.scalar('test angle of link1', np.rad2deg(radian), step=step)
     
-    img = env.render(mode='rgb_array').astype(np.float32)
-    cv2.putText(img=img,text=f'TEST: Step({step:04})', org=(50,50), fontFace=font, fontScale=1,color=blue_color, thickness=1, lineType=0)
-    videoWriter.write(img.astype(np.ubyte))
+    if IS_CPU:
+        img = env.render(mode='rgb_array').astype(np.float32)
+        cv2.putText(img=img,text=f'TEST: Step({step:04})', org=(50,50), fontFace=font, fontScale=1,color=blue_color, thickness=1, lineType=0)
+        videoWriter.write(img.astype(np.ubyte))
     

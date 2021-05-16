@@ -60,20 +60,21 @@ class AcrobotEnv_d2(core.Env):
         'video.frames_per_second' : 15
     }
 
-    dt = .2
+    dt = 1
 
-    LINK_LENGTH_1 = 0.45  # [m]
-    LINK_LENGTH_2 = 0.10  # [m]
-    LINK_MASS_1 = 4.43  #: [kg] mass of link 1
-    LINK_MASS_2 = 0.189  #: [kg] mass of link 2
-    LINK_COM_POS_1 = 0.225  #: [m] position of the center of mass of link 1
-    LINK_COM_POS_2 = 0.05  #: [m] position of the center of mass of link 2
-    LINK_MOI = 1.  #: moments of inertia for both links
+    LINK_LENGTH_1 = 0.397  # [m]
+    LINK_LENGTH_2 = 0.105  # [m]
+    LINK_MASS_1 = 0.801  #: [kg] mass of link 1
+    LINK_MASS_2 = 0.758  #: [kg] mass of link 2
+    LINK_COM_POS_1 = 0.171  #: [m] position of the center of mass of link 1
+    LINK_COM_POS_2 = 0.071408  #: [m] position of the center of mass of link 2
+    LINK_MOI1 = 0.046141652  #: [kg m^2] moments of inertia for both links
+    LINK_MOI2 = 0.000534900857  #: [kg m^2] moments of inertia for both links
 
-    MAX_VEL_1 = 4 * pi
-    MAX_VEL_2 = 58 * 2 * pi / 60
+    MAX_VEL_1 = 4 * pi #: [rad/s]
+    MAX_VEL_2 = 32 * 2 * pi / 60 # [rad/s]
 
-    AVAIL_TORQUE = [-1., 0., +1]
+    AVAIL_TORQUE = [-0.7, 0., +0.7]
 
     torque_noise_max = 0.
 
@@ -103,7 +104,6 @@ class AcrobotEnv_d2(core.Env):
     def step(self, a):
         s = self.state
         torque = self.AVAIL_TORQUE[a]
-
         # Add noise to the force action
         if self.torque_noise_max > 0:
             torque += self.np_random.uniform(-self.torque_noise_max, self.torque_noise_max)
@@ -122,7 +122,7 @@ class AcrobotEnv_d2(core.Env):
         # at the ''final timestep'', self.dt
 
         ns[0] = wrap(ns[0], -pi, pi)
-        ns[1] = bound(ns[1], np.deg2rad(-10), np.deg2rad(100))
+        ns[1] = bound(ns[1], np.deg2rad(-100), np.deg2rad(10))
         ns[2] = bound(ns[2], -self.MAX_VEL_1, self.MAX_VEL_1)
         ns[3] = bound(ns[3], -self.MAX_VEL_2, self.MAX_VEL_2)
         self.state = ns
@@ -144,8 +144,8 @@ class AcrobotEnv_d2(core.Env):
         l1 = self.LINK_LENGTH_1
         lc1 = self.LINK_COM_POS_1
         lc2 = self.LINK_COM_POS_2
-        I1 = self.LINK_MOI
-        I2 = self.LINK_MOI
+        I1 = self.LINK_MOI1
+        I2 = self.LINK_MOI2
         g = 9.8
         a = s_augmented[-1]
         s = s_augmented[:-1]
@@ -197,12 +197,12 @@ class AcrobotEnv_d2(core.Env):
 
         self.viewer.draw_line((-2.2, 1), (2.2, 1))
         for ((x,y),th,llen) in zip(xys, thetas, link_lengths):
-            l,r,t,b = 0, llen, .1, -.1
+            l,r,t,b = 0, llen, .05, -.05
             jtransform = rendering.Transform(rotation=th, translation=(x,y))
             link = self.viewer.draw_polygon([(l,b), (l,t), (r,t), (r,b)])
             link.add_attr(jtransform)
             link.set_color(0,.8, .8)
-            circ = self.viewer.draw_circle(.1)
+            circ = self.viewer.draw_circle(.05)
             circ.set_color(.8, .8, 0)
             circ.add_attr(jtransform)
 
