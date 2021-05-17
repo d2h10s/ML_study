@@ -66,7 +66,7 @@ if len(sys.argv) > 1:
     with open(os.path.join(arg_dir, 'backup.yaml')) as f:
         yaml_data = yaml.load(f)
         episode = int(yaml_data['episode']) + 1
-        running_reward = int(yaml_data['running reward'])
+        running_reward = int(yaml_data['running_reward'])
         episode_reward = int(yaml_data['episode_reward'])
     with open(os.path.join(log_dir, 'terminal_log.txt'), 'a') as f:
         f.write('model data loaded from '+ arg_dir +'\n')
@@ -115,7 +115,7 @@ while True:
             
             state, _, done, _ = env.step(action)
             # tan(theta1) [rad] = arctan(sin(theta1)/cos(theta1))
-            reward = state[0] - np.abs(state[4])# state[0] - state[4]/env.MAX_VEL_1 # cos(theta_1), -1 <= cos(theta_1) <= 1
+            reward = state[0] - state[4]**2*0.008# state[0] - state[4]/env.MAX_VEL_1 # cos(theta_1), -1 <= cos(theta_1) <= 1
  
             rewards_history.append(reward)
             episode_reward += reward
