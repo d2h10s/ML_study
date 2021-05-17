@@ -1,4 +1,4 @@
-import os, time
+import sys, os, time, yaml
 import numpy as np
 import gym
 import tensorflow as tf
@@ -9,13 +9,17 @@ import cv2
 
 # Learning CONSTANT VALUE
 GAMMA = .99
-MAX_STEP = int(2e3)
+MAX_STEP = int(1e3)
 SEED = 3 # random seed
 EPS = np.finfo(np.float32).eps.item()
 MAX_DONE = 100 # condition which terminate episode
 MAX_REWARD = 5000 # condition which terminate learning
 ALPHA = 0.05 # for the exponential moving everage
 IS_CPU = not tf.test.is_gpu_available()
+REWARD_DEFINITION = '''
+using original gym library
+definition of reward : [reward = state[0] - state[4]/env.MAX_VEL_1]
+'''
 
 # Video Variables
 fourcc = cv2.VideoWriter_fourcc(*'DIVX')
@@ -24,12 +28,14 @@ font = cv2.FONT_HERSHEY_SIMPLEX
 
 
 # Environment creation
-env = gym.make('Acrobot-v2')
+env = gym.make('Acrobot-v1')
+
 # make every environment have uniform random seed\
 env.seed(SEED)
 env.action_space.seed(SEED)
 env.observation_space.seed(SEED)
 
+# set environment parameter
 state = env.reset()
 observation_n = env.observation_space.shape
 action_n = env.action_space.n
@@ -39,30 +45,43 @@ if IS_CPU:
 
 # Settings for Summary Writer of Tensorboard
 # ex) Acrobot-v1_'05-14_11:04:29
-now_time = time.strftime('%m-%d_%Hh-%Mm-%Ss', time.localtime())
-log_dir = os.path.join(os.curdir,'logs/Acrobot-v1_'+now_time)
+start_time = time.strftime('%m-%d_%Hh-%Mm-%Ss', time.localtime())
+log_dir = os.path.join(os.curdir,'logs','Acrobot-v1_'+start_time)
 summary_writer = tf.summary.create_file_writer(log_dir)
 os.makedirs(os.path.join(log_dir, 'video'))
 
-'''
-input_layer  = layers.Input(shape=observation_n)
-conv1_layer  = layers.Conv2D(32, activation='relu', name='common_1')(input_layer)
-conv2_layer  = layers.Conv2D(64, activation='relu', name='common_2')(conv1_layer)
-conv3_layer  = layers.Conv2D(64, activation='relu', name='common_3')(conv2_layer)
-actor1_layer  = layers.Dense(action_n, activation='relu', name='Actor1')(conv3_layer) # 0 <= softmax <= 1
-actor2_layer  = layers.Dense(action_n, activation='softmax', name='Actor2')(actor1_layer) # 0 <= softmax <= 1
-critic1_layer  = layers.Dense(1, activation='relu', name='Critic1')(conv3_layer) # 0 <= softmax <= 1
-critic2_layer = layers.Dense(1, name='Critic2')(critic1_layer)
-model = keras.Model(inputs=input_layer,outputs=[actor2_layer, critic2_layer])
-'''
-# A2C model Layer 
-input_layer  = layers.Input(shape=observation_n)
-fc1_layer    = layers.Dense(hidden_n, activation='relu', name='Dense1')(input_layer)
-fc2_layer    = layers.Dense(hidden_n, activation='relu', name='Dense2')(fc1_layer)
-actor_layer  = layers.Dense(action_n, activation='softmax', name='Actor')(fc2_layer) # 0 <= softmax <= 1
-critic_layer = layers.Dense(1, name='Critic')(fc2_layer)
+# Learning data buffer
+action_probs_buffer = []
+critic_value_buffer = []
+rewards_history = []
+running_reward = 0
+episode = 0
 
-model = keras.Model(inputs=input_layer,outputs=[actor_layer, critic_layer])
+# A2C model Layer 
+# load model if there is commandline argument else make new model
+if len(sys.argv) > 1:
+    arg_dir = sys.argv[1]
+    model = tf.keras.models.load_model(os.path.join(arg_dir, 'tf_model'))
+    # load progress data
+    with open(os.path.join(arg_dir, 'backup.yaml')) as f:
+        yaml_data = yaml.load(f)
+        episode = int(yaml_data['episode']) + 1
+        running_reward = int(yaml_data['running reward'])
+        episode_reward = int(yaml_data['episode_reward'])
+    with open(os.path.join(log_dir, 'terminal_log.txt'), 'a') as f:
+        f.write('model data loaded from '+ arg_dir +'\n')
+else:
+    input_layer  = layers.Input(shape=observation_n)
+    fc1_layer    = layers.Dense(hidden_n, activation='relu', name='Dense1')(input_layer)
+    fc2_layer    = layers.Dense(hidden_n, activation='relu', name='Dense2')(fc1_layer)
+    actor_layer  = layers.Dense(action_n, activation='softmax', name='Actor')(fc2_layer) # 0 <= softmax <= 1
+    critic_layer = layers.Dense(1, name='Critic')(fc2_layer)
+
+    model = keras.Model(inputs=input_layer,outputs=[actor_layer, critic_layer])
+
+with open(os.path.join(log_dir, 'terminal_log.txt'), 'a') as f:
+    f.write(REWARD_DEFINITION+'\n\n')
+
 keras.utils.plot_model(model, os.path.join(log_dir, "A2C_model_with_shape_info.png"), show_shapes=True)
 print(model.summary())
 
@@ -73,21 +92,17 @@ huber_loss = keras.losses.Huber()
 
 
 
-# Learning data buffer
-action_probs_buffer = []
-critic_value_buffer = []
-rewards_history = []
-running_reward = 0
-episode = 0
-
 while True:
     state = env.reset()
     episode_reward = 0
     done_count = 0
     with tf.GradientTape() as tape:
+        # >>> save video once every 100 episode
         if IS_CPU and episode % 100 == 0:
             video_dir = os.path.join(log_dir, 'video', f'learning(episode{episode}).avi')
             videoWriter = cv2.VideoWriter(video_dir,fourcc, 15, img_shape)
+        # <<< for save video
+
         for step in range(1, MAX_STEP+1):
             state = tf.convert_to_tensor([state])
 
@@ -100,7 +115,7 @@ while True:
             
             state, _, done, _ = env.step(action)
             # tan(theta1) [rad] = arctan(sin(theta1)/cos(theta1))
-            reward = state[0] - state[4]/env.MAX_VEL_1 # cos(theta_1), -1 <= cos(theta_1) <= 1
+            reward = state[0] - np.abs(state[4])# state[0] - state[4]/env.MAX_VEL_1 # cos(theta_1), -1 <= cos(theta_1) <= 1
  
             rewards_history.append(reward)
             episode_reward += reward
@@ -112,12 +127,14 @@ while True:
             else:
                 running_reward = ALPHA * episode_reward + (1 - ALPHA) * running_reward
             
+            # >>> for save video
             if IS_CPU and episode % 100 == 0:
                 img = env.render(mode='rgb_array').astype(np.float32)
                 cv2.putText(img=img,text=f'Episode({episode:05})    Step({step:04})',\
                      org=(5,50), fontFace=font, fontScale=1,color=blue_color, thickness=1, lineType=0)
                 videoWriter.write(img.astype(np.ubyte))
-                
+            # <<< for save video
+
             if state[0] < 0.035:
                 done_count += 1
             else:
@@ -125,14 +142,19 @@ while True:
 
             if done_count > MAX_DONE:
                 break
+        
+        # >>> for release video resource
         if IS_CPU and episode % 100 == 0:
             videoWriter.release()
+        # >>> for release video resource
 
         action_probs_buffer = tf.math.log(action_probs_buffer)
 
+        # >> for monitoring
         with summary_writer.as_default():
             tf.summary.scalar('reward of episodes', episode_reward, step=episode)
-        
+        # <<< for monitoring
+
         Returns = []
         discounted_sum = 0
         for r in rewards_history[::-1]:
@@ -165,24 +187,52 @@ while True:
         critic_value_buffer.clear()
         rewards_history.clear()
 
-        with summary_writer.as_default():
-            tf.summary.scalar('losses', loss_value, step=episode)
-        if episode % 100 == 0:
-            model.save(os.path.join(log_dir, f'tf_model'))
+    # >>> for monitoring
+    with summary_writer.as_default():
+        tf.summary.scalar('losses', loss_value, step=episode)
+    # <<< for monitoring
 
-    print(f"running reward: {running_reward:.2f} at episode {episode} --time:{time.strftime('%m-%d_%Hh-%Mm', time.localtime())}")
+    # >>> for backup
+    if episode % 100 == 0:
+        model.save(os.path.join(log_dir, f'tf_model'))
+    # <<< for backup
+    
+    # >>> for backup
+    now_time = time.strftime('%m-%d_%Hh-%Mm-%Ss', time.localtime())
+    log_text = "running reward: {:9.2f} at episode {:8} --time:{}".format(running_reward, episode, now_time)
+    print(log_text)
+    with open(os.path.join(log_dir, 'terminal_log.txt'), 'a') as f:
+        f.write(log_text+'\n')
+    with open(os.path.join(log_dir, 'backup.yaml'), 'w') as f:
+        yaml_data = {'start_time':start_time,\
+                    'episode':          episode,\
+                    'running_reward':   float(running_reward),\
+                    'episode_reward':   float(episode_reward),\
+                    'end_time':         now_time,\
+                    'GAMMA':            GAMMA,\
+                    'MAX_STEP':         MAX_STEP,\
+                    'SEED':             SEED,\
+                    'EPS':              EPS,\
+                    'MAX_DONE':         MAX_DONE,\
+                    'MAX_REWARD':       MAX_REWARD,\
+                    'ALPHA':            ALPHA}
+        yaml.dump(yaml_data, f)
+    # <<< for backup
+    # >>> for monitoring
     with summary_writer.as_default():
             tf.summary.scalar('running reward of episodes', running_reward, step=episode)
+    # <<< for monitoring
+
     if running_reward > MAX_REWARD:  # Co.ndition to consider the task solved
         print(f"Solved at episode {episode} with running reward {running_reward}")
         break
-
+    
     episode += 1
 
 
 state = env.reset()
 if IS_CPU:
-    video_dir = os.path.join(os.curdir,'logs','Acrobot-v1_'+now_time,f'test.avi')
+    video_dir = os.path.join(os.curdir,'logs','Acrobot-v1_'+start_time,f'test.avi')
     videoWriter = cv2.VideoWriter(video_dir,fourcc, 15, img_shape)
 for step in range(1, MAX_STEP):
     state = tf.convert_to_tensor(state)
