@@ -15,7 +15,7 @@ for i in range(100):
     for i in range(1000):
         env.step(np.random.randint(2))
         img = env.render(mode='rgb_array').astype(np.float32)
-        cv2.putText(img=img,text=f'Step({i:04})\tEpisode{}', org=(50,50), fontFace=font, fontScale=1,color=blue_color, thickness=1, lineType=0)
+        cv2.putText(img=img,text=f'Step({i:04})   Episode{episode_count}', org=(50,50), fontFace=font, fontScale=1,color=blue_color, thickness=1, lineType=0)
         videoWriter.write(img.astype(np.ubyte))
     videoWriter.release()
     episode_count += 1

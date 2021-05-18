@@ -13,12 +13,13 @@ MAX_STEP = int(1e3)
 SEED = 3 # random seed
 EPS = np.finfo(np.float32).eps.item()
 MAX_DONE = 100 # condition which terminate episode
-MAX_REWARD = 5000 # condition which terminate learning
+MAX_REWARD = -50 # condition which terminate learning
 ALPHA = 0.05 # for the exponential moving everage
 IS_CPU = not tf.test.is_gpu_available()
 REWARD_DEFINITION = '''
-using original gym library
-definition of reward : [reward = state[0] - state[4]/env.MAX_VEL_1]
+using acrobot-v2 environment which is d2h10s edition
+definition of reward : [reward = -cos(theta_1)]
+termination condition: [cos(theta_1) < 0.1 => theta1 is over the 84 degrees]
 '''
 
 # Video Variables
@@ -115,7 +116,7 @@ while True:
             
             state, _, done, _ = env.step(action)
             # tan(theta1) [rad] = arctan(sin(theta1)/cos(theta1))
-            reward = state[0] - state[4]**2*0.008# state[0] - state[4]/env.MAX_VEL_1 # cos(theta_1), -1 <= cos(theta_1) <= 1
+            reward = -state[0]# state[0] - state[4]/env.MAX_VEL_1 # cos(theta_1), -1 <= cos(theta_1) <= 1
  
             rewards_history.append(reward)
             episode_reward += reward
@@ -135,12 +136,7 @@ while True:
                 videoWriter.write(img.astype(np.ubyte))
             # <<< for save video
 
-            if state[0] < 0.035:
-                done_count += 1
-            else:
-                done_count = 0
-
-            if done_count > MAX_DONE:
+            if state[0] < 0.1:
                 break
         
         # >>> for release video resource
