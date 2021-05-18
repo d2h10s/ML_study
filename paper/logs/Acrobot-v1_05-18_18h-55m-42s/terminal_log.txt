@@ -1,0 +1,9 @@
+
+using original gym library
+definition of reward : [reward = state[0] - state[4]/env.MAX_VEL_1]
+
+
+running reward:    903.97 at episode        0 --time:05-18_18h-55m-53s
+running reward:    957.04 at episode        1 --time:05-18_18h-55m-57s
+running reward:    894.79 at episode        2 --time:05-18_18h-56m-01s
+running reward:    747.19 at episode        3 --time:05-18_18h-56m-04s

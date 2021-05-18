@@ -28,7 +28,7 @@ font = cv2.FONT_HERSHEY_SIMPLEX
 
 
 # Environment creation
-env = gym.make('Acrobot-v1')
+env = gym.make('Acrobot-v2')
 
 # make every environment have uniform random seed\
 env.seed(SEED)

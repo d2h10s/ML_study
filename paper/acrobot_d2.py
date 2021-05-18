@@ -60,7 +60,7 @@ class AcrobotEnv_d2(core.Env):
         'video.frames_per_second' : 15
     }
 
-    dt = .25
+    dt = .025
 
     LINK_LENGTH_1 = 0.397  # [m]
     LINK_LENGTH_2 = 0.105  # [m]
@@ -73,23 +73,23 @@ class AcrobotEnv_d2(core.Env):
 
     MAX_VEL_1 = 4 * pi #: [rad/s]
     MAX_VEL_2 = 32 * 2 * pi / 60 # [rad/s]
-
-    AVAIL_TORQUE = [-0.7, 0., +0.7]
-
-    torque_noise_max = 0.
+    MAX_TORQUE = 0.7
+    AVAIL_DIRECTION = [-100, +10]
+    ACCEL_RATIO = 0.2
+    dir_noise_max = 0.
 
     #: use dynamics equations from the nips paper or the book
     book_or_nips = "book"
     action_arrow = None
     domain_fig = None
-    actions_num = 3
+    actions_num = 2
 
     def __init__(self):
         self.viewer = None
-        high = np.array([1.0, 1.0, 1.0, 1.0, self.MAX_VEL_1, self.MAX_VEL_2], dtype=np.float32)
-        low = -high
+        high = np.array([1.0, 1.0, np.cos(np.deg2rad(self.AVAIL_DIRECTION[1])), np.sin(np.deg2rad(self.AVAIL_DIRECTION[1])), self.MAX_VEL_1, self.MAX_VEL_2], dtype=np.float32)
+        low  = np.array([1.0, 1.0, np.cos(np.deg2rad(self.AVAIL_DIRECTION[0])), np.sin(np.deg2rad(self.AVAIL_DIRECTION[0])), self.MAX_VEL_1, self.MAX_VEL_2], dtype=np.float32)
         self.observation_space = spaces.Box(low=low, high=high, dtype=np.float32)
-        self.action_space = spaces.Discrete(3)
+        self.action_space = spaces.Discrete(self.actions_num)
         self.state = None
         self.seed()
 
@@ -98,18 +98,35 @@ class AcrobotEnv_d2(core.Env):
         return [seed]
 
     def reset(self):
-        self.state = self.np_random.uniform(low=-0.1, high=0.1, size=(4,))
+        self.state = np.array([0, 0, 0, 0]) # self.np_random.uniform(low=-0.1, high=0.1, size=(4,))
         return self._get_ob()
 
-    def step(self, a):
+    def _motor_profile(self, deg):
+        t, a, b = self.MAX_TORQUE, self.AVAIL_DIRECTION[0], self.AVAIL_DIRECTION[1]
+        trisection = (b-a)/3
+        slope = t/trisection
+
+        if deg < a+trisection:
+            torque = slope*(deg-a)
+        elif deg < b-(b-a)/3:
+            torque = t
+        else:
+            torque = -slope*(deg-b)
+
+        return torque
+
+    def step(self, dir):
         s = self.state
-        torque = self.AVAIL_TORQUE[a]
+        direction = self.AVAIL_DIRECTION[dir]
         # Add noise to the force action
-        if self.torque_noise_max > 0:
-            torque += self.np_random.uniform(-self.torque_noise_max, self.torque_noise_max)
+        if self.dir_noise_max > 0:
+            dir += self.np_random.uniform(-self.dir_noise_max, self.dir_noise_max)
 
         # Now, augment the state with our force action so it can be passed to
         # _dsdt
+        torque = self._motor_profile(self.state[0])
+        if dir == 0:
+            torque *= -1
         s_augmented = np.append(s, torque)
 
         ns = rk4(self._dsdt, s_augmented, [0, self.dt])

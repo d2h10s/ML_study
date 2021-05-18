@@ -1,0 +1,24 @@
+
+using original gym library
+definition of reward : [reward = state[0] - state[4]/env.MAX_VEL_1]
+
+
+running reward:    882.92 at episode        0 --time:05-18_18h-52m-57s
+running reward:    752.21 at episode        1 --time:05-18_18h-53m-05s
+running reward:    699.82 at episode        2 --time:05-18_18h-53m-13s
+running reward:    890.27 at episode        3 --time:05-18_18h-53m-21s
+running reward:    866.49 at episode        4 --time:05-18_18h-53m-30s
+running reward:    835.68 at episode        5 --time:05-18_18h-53m-37s
+running reward:    954.06 at episode        6 --time:05-18_18h-53m-45s
+running reward:    723.68 at episode        7 --time:05-18_18h-53m-53s
+running reward:    876.47 at episode        8 --time:05-18_18h-54m-01s
+running reward:    962.68 at episode        9 --time:05-18_18h-54m-09s
+running reward:    968.47 at episode       10 --time:05-18_18h-54m-16s
+running reward:    810.75 at episode       11 --time:05-18_18h-54m-24s
+running reward:    730.04 at episode       12 --time:05-18_18h-54m-32s
+running reward:    941.21 at episode       13 --time:05-18_18h-54m-39s
+running reward:    848.20 at episode       14 --time:05-18_18h-54m-47s
+running reward:    879.71 at episode       15 --time:05-18_18h-54m-55s
+running reward:    944.91 at episode       16 --time:05-18_18h-55m-02s
+running reward:    955.78 at episode       17 --time:05-18_18h-55m-11s
+running reward:    845.50 at episode       18 --time:05-18_18h-55m-20s
