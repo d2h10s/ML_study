@@ -1,0 +1,60 @@
+
+using acrobot-v2 environment which is d2h10s edition v1.1
+definition of reward : [reward = -abs(cos(theta_1))]
+termination condition: [None]
+
+
+running reward:   -980.26 at episode        0 --time:05-19_13h-06m-21s
+running reward:   -902.55 at episode        1 --time:05-19_13h-06m-25s
+running reward:   -858.19 at episode        2 --time:05-19_13h-06m-29s
+running reward:   -929.74 at episode        3 --time:05-19_13h-06m-33s
+running reward:   -938.99 at episode        4 --time:05-19_13h-06m-37s
+running reward:   -895.43 at episode        5 --time:05-19_13h-06m-41s
+running reward:   -921.43 at episode        6 --time:05-19_13h-06m-45s
+running reward:   -919.49 at episode        7 --time:05-19_13h-06m-48s
+running reward:   -952.91 at episode        8 --time:05-19_13h-06m-52s
+running reward:   -940.74 at episode        9 --time:05-19_13h-06m-56s
+running reward:   -732.65 at episode       10 --time:05-19_13h-06m-59s
+running reward:   -852.51 at episode       11 --time:05-19_13h-07m-03s
+running reward:   -801.76 at episode       12 --time:05-19_13h-07m-07s
+running reward:   -923.00 at episode       13 --time:05-19_13h-07m-11s
+running reward:   -835.63 at episode       14 --time:05-19_13h-07m-14s
+running reward:   -952.51 at episode       15 --time:05-19_13h-07m-18s
+running reward:   -830.36 at episode       16 --time:05-19_13h-07m-22s
+running reward:   -934.37 at episode       17 --time:05-19_13h-07m-25s
+running reward:   -924.72 at episode       18 --time:05-19_13h-07m-29s
+running reward:   -861.39 at episode       19 --time:05-19_13h-07m-32s
+running reward:   -952.33 at episode       20 --time:05-19_13h-07m-36s
+running reward:   -690.51 at episode       21 --time:05-19_13h-07m-40s
+running reward:   -927.17 at episode       22 --time:05-19_13h-07m-43s
+running reward:   -766.86 at episode       23 --time:05-19_13h-07m-47s
+running reward:   -885.26 at episode       24 --time:05-19_13h-07m-51s
+running reward:   -910.90 at episode       25 --time:05-19_13h-07m-54s
+running reward:   -896.83 at episode       26 --time:05-19_13h-07m-58s
+running reward:   -906.07 at episode       27 --time:05-19_13h-08m-01s
+running reward:   -878.73 at episode       28 --time:05-19_13h-08m-05s
+running reward:   -863.62 at episode       29 --time:05-19_13h-08m-09s
+running reward:   -826.33 at episode       30 --time:05-19_13h-08m-12s
+running reward:   -880.33 at episode       31 --time:05-19_13h-08m-16s
+running reward:   -875.88 at episode       32 --time:05-19_13h-08m-19s
+running reward:   -868.40 at episode       33 --time:05-19_13h-08m-23s
+running reward:   -594.97 at episode       34 --time:05-19_13h-08m-27s
+running reward:   -741.42 at episode       35 --time:05-19_13h-08m-31s
+running reward:   -830.45 at episode       36 --time:05-19_13h-08m-36s
+running reward:   -768.06 at episode       37 --time:05-19_13h-08m-40s
+running reward:   -873.88 at episode       38 --time:05-19_13h-08m-44s
+running reward:   -925.53 at episode       39 --time:05-19_13h-08m-48s
+running reward:   -909.06 at episode       40 --time:05-19_13h-08m-52s
+running reward:   -691.70 at episode       41 --time:05-19_13h-08m-57s
+running reward:   -876.16 at episode       42 --time:05-19_13h-09m-01s
+running reward:   -749.44 at episode       43 --time:05-19_13h-09m-05s
+running reward:   -816.54 at episode       44 --time:05-19_13h-09m-09s
+running reward:   -653.83 at episode       45 --time:05-19_13h-09m-13s
+running reward:   -659.73 at episode       46 --time:05-19_13h-09m-18s
+running reward:   -899.07 at episode       47 --time:05-19_13h-09m-22s
+running reward:   -748.17 at episode       48 --time:05-19_13h-09m-26s
+running reward:   -666.39 at episode       49 --time:05-19_13h-09m-30s
+running reward:   -770.43 at episode       50 --time:05-19_13h-09m-35s
+running reward:   -840.97 at episode       51 --time:05-19_13h-09m-39s
+running reward:   -837.52 at episode       52 --time:05-19_13h-09m-43s
+running reward:   -835.97 at episode       53 --time:05-19_13h-09m-47s

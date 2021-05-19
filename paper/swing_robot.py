@@ -17,9 +17,9 @@ MAX_REWARD = -50 # condition which terminate learning
 ALPHA = 0.05 # for the exponential moving everage
 IS_CPU = not tf.test.is_gpu_available()
 REWARD_DEFINITION = '''
-using acrobot-v2 environment which is d2h10s edition
-definition of reward : [reward = -cos(theta_1)]
-termination condition: [cos(theta_1) < 0.1 => theta1 is over the 84 degrees]
+using acrobot-v2 environment which is d2h10s edition v1.1
+definition of reward : [reward = -abs(cos(theta_1))]
+termination condition: [None]
 '''
 
 # Video Variables
@@ -116,7 +116,7 @@ while True:
             
             state, _, done, _ = env.step(action)
             # tan(theta1) [rad] = arctan(sin(theta1)/cos(theta1))
-            reward = -state[0]# state[0] - state[4]/env.MAX_VEL_1 # cos(theta_1), -1 <= cos(theta_1) <= 1
+            reward = -np.abs(state[0])# state[0] - state[4]/env.MAX_VEL_1 # cos(theta_1), -1 <= cos(theta_1) <= 1
  
             rewards_history.append(reward)
             episode_reward += reward
@@ -135,10 +135,9 @@ while True:
                      org=(5,50), fontFace=font, fontScale=1,color=blue_color, thickness=1, lineType=0)
                 videoWriter.write(img.astype(np.ubyte))
             # <<< for save video
-
-            if state[0] < 0.1:
-                break
-        
+            #if state[0] < -0.98:
+            #    break
+            
         # >>> for release video resource
         if IS_CPU and episode % 100 == 0:
             videoWriter.release()
@@ -182,7 +181,6 @@ while True:
         action_probs_buffer = []
         critic_value_buffer.clear()
         rewards_history.clear()
-
     # >>> for monitoring
     with summary_writer.as_default():
         tf.summary.scalar('losses', loss_value, step=episode)
