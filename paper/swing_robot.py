@@ -234,7 +234,6 @@ for step in range(1, MAX_STEP):
     state = tf.expand_dims(state, 0)
 
     action_probs, critic_value = model(state)
-    critic_value_buffer.append(critic_value[0, 0])
 
     action = np.argmax(action_probs)
     state, _, done, _ = env.step(action)
@@ -248,4 +247,4 @@ for step in range(1, MAX_STEP):
         img = env.render(mode='rgb_array').astype(np.float32)
         cv2.putText(img=img,text=f'TEST: Step({step:04})', org=(50,50), fontFace=font, fontScale=1,color=blue_color, thickness=1, lineType=0)
         videoWriter.write(img.astype(np.ubyte))
-    
+videoWriter.release()
