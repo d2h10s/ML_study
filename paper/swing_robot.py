@@ -70,6 +70,7 @@ if len(sys.argv) > 1:
         running_reward = int(yaml_data['running_reward'])
         episode_reward = int(yaml_data['episode_reward'])
     with open(os.path.join(log_dir, 'terminal_log.txt'), 'a') as f:
+        f.write(log_dir+'\n')
         f.write('model data loaded from '+ arg_dir +'\n')
 else:
     input_layer  = layers.Input(shape=observation_n)
