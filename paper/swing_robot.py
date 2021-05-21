@@ -1,4 +1,4 @@
-import sys, os, time, yaml
+import sys, os, time, yaml, shutil
 import numpy as np
 import gym
 import tensorflow as tf
@@ -47,9 +47,10 @@ if IS_CPU:
 # Settings for Summary Writer of Tensorboard
 # ex) Acrobot-v1_'05-14_11:04:29
 start_time = time.strftime('%m-%d_%Hh-%Mm-%Ss', time.localtime())
-log_dir = os.path.join(os.curdir,'logs','Acrobot-v1_'+start_time)
+log_dir = os.path.join(os.curdir,'logs','Acrobot-v2_'+start_time)
 summary_writer = tf.summary.create_file_writer(log_dir)
 os.makedirs(os.path.join(log_dir, 'video'))
+shutil.copy(src=os.path.abspath(__file__),dst=os.path.join(log_dir,'source.py'))
 
 # Learning data buffer
 action_probs_buffer = []
@@ -189,7 +190,7 @@ while True:
 
     # >>> for backup
     if episode % 100 == 0:
-        model.save(os.path.join(log_dir, f'tf_model'))
+        model.save(os.path.join(log_dir, 'tf_model'))
     # <<< for backup
     
     # >>> for backup
