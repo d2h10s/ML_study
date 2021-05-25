@@ -5,8 +5,8 @@ MAX_DONE: 100
 MAX_REWARD: -50
 MAX_STEP: 1000
 SEED: 3
-end_time: 05-21_15h-18m-04s
-episode: 315
-episode_reward: -666.9181470112179
-running_reward: -654.2728450947886
+end_time: 05-21_23h-57m-04s
+episode: 7330
+episode_reward: -758.0618352805557
+running_reward: -751.7616837391372
 start_time: 05-21_14h-56m-32s

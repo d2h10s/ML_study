@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from tensorflow import keras
 from tensorflow.keras import layers, optimizers
 import cv2
-
+import tracemalloc
 # Learning CONSTANT VALUE
 GAMMA = .99
 MAX_STEP = int(1e3)
@@ -59,6 +59,7 @@ rewards_history = []
 running_reward = 0
 episode = 0
 
+tracemalloc.start()
 # A2C model Layer 
 # load model if there is commandline argument else make new model
 if len(sys.argv) > 1:
@@ -104,7 +105,7 @@ while True:
         if IS_CPU and episode % 100 == 0:
             video_dir = os.path.join(log_dir, 'video', f'learning(episode{episode}).avi')
             videoWriter = cv2.VideoWriter(video_dir,fourcc, 15, img_shape)
-        # <<< for save video
+        # <<< save video once every 100 episode
 
         for step in range(1, MAX_STEP+1):
             state = tf.convert_to_tensor([state])
@@ -188,10 +189,10 @@ while True:
         tf.summary.scalar('losses', loss_value, step=episode)
     # <<< for monitoring
 
-    # >>> for backup
+    # >>> for save model
     if episode % 100 == 0:
-        model.save(os.path.join(log_dir, 'tf_model'))
-    # <<< for backup
+        model.save(os.path.join(log_dir, 'tf_model', f'learing_model{episode}'))
+    # <<< for save model
     
     # >>> for backup
     now_time = time.strftime('%m-%d_%Hh-%Mm-%Ss', time.localtime())
