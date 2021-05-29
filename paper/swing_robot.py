@@ -1,4 +1,4 @@
-import sys, os, time, yaml
+import sys, os, time, yaml, shutil
 import numpy as np
 import gym
 import tensorflow as tf
@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from tensorflow import keras
 from tensorflow.keras import layers, optimizers
 import cv2
-
+import tracemalloc
 # Learning CONSTANT VALUE
 GAMMA = .99
 MAX_STEP = int(1e3)
@@ -47,9 +47,10 @@ if IS_CPU:
 # Settings for Summary Writer of Tensorboard
 # ex) Acrobot-v1_'05-14_11:04:29
 start_time = time.strftime('%m-%d_%Hh-%Mm-%Ss', time.localtime())
-log_dir = os.path.join(os.curdir,'logs','Acrobot-v1_'+start_time)
+log_dir = os.path.join(os.curdir,'logs','Acrobot-v2_'+start_time)
 summary_writer = tf.summary.create_file_writer(log_dir)
 os.makedirs(os.path.join(log_dir, 'video'))
+shutil.copy(src=os.path.abspath(__file__),dst=os.path.join(log_dir,'source.py'))
 
 # Learning data buffer
 action_probs_buffer = []
@@ -58,6 +59,7 @@ rewards_history = []
 running_reward = 0
 episode = 0
 
+tracemalloc.start()
 # A2C model Layer 
 # load model if there is commandline argument else make new model
 if len(sys.argv) > 1:
@@ -84,7 +86,7 @@ else:
 with open(os.path.join(log_dir, 'terminal_log.txt'), 'a') as f:
     f.write(REWARD_DEFINITION+'\n\n')
 
-keras.utils.plot_model(model, os.path.join(log_dir, "A2C_model_with_shape_info.png"), show_shapes=True)
+#keras.utils.plot_model(model, os.path.join(log_dir, "A2C_model_with_shape_info.png"), show_shapes=True)
 print(model.summary())
 
 
@@ -98,12 +100,13 @@ while True:
     state = env.reset()
     episode_reward = 0
     done_count = 0
+    deg_list = []
     with tf.GradientTape() as tape:
         # >>> save video once every 100 episode
         if IS_CPU and episode % 100 == 0:
             video_dir = os.path.join(log_dir, 'video', f'learning(episode{episode}).avi')
             videoWriter = cv2.VideoWriter(video_dir,fourcc, 15, img_shape)
-        # <<< for save video
+        # <<< save video once every 100 episode
 
         for step in range(1, MAX_STEP+1):
             state = tf.convert_to_tensor([state])
@@ -128,7 +131,8 @@ while True:
                 running_reward = episode_reward
             else:
                 running_reward = ALPHA * episode_reward + (1 - ALPHA) * running_reward
-            
+            deg = np.rad2deg(np.arctan2(state[1], state[0]))
+            deg_list.append(deg)
             # >>> for save video
             if IS_CPU and episode % 100 == 0:
                 img = env.render(mode='rgb_array').astype(np.float32)
@@ -139,11 +143,17 @@ while True:
             #if state[0] < -0.98:
             #    break
             
-        # >>> for release video resource
-        if IS_CPU and episode % 100 == 0:
-            videoWriter.release()
-        # >>> for release video resource
-
+        
+        if episode % 100 == 0:
+            if IS_CPU:
+                videoWriter.release()
+            fft_list = np.abs(np.fft.fft(deg_list))
+            with summary_writer.as_default():
+                for step, deg in enumerate(deg_list):
+                    tf.summary.scalar(f'Angle of episode{episode:05}_deg', deg, step=step)
+                for step, fft in enumerate(fft_list):
+                    tf.summary.scalar(f'Angle of episode{episode:05}_fft', fft, step=step)
+        
         action_probs_buffer = tf.math.log(action_probs_buffer)
 
         # >> for monitoring
@@ -187,10 +197,10 @@ while True:
         tf.summary.scalar('losses', loss_value, step=episode)
     # <<< for monitoring
 
-    # >>> for backup
+    # >>> for save model
     if episode % 100 == 0:
-        model.save(os.path.join(log_dir, f'tf_model'))
-    # <<< for backup
+        model.save(os.path.join(log_dir, 'tf_model', f'learing_model{episode}'))
+    # <<< for save model
     
     # >>> for backup
     now_time = time.strftime('%m-%d_%Hh-%Mm-%Ss', time.localtime())

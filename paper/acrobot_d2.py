@@ -62,17 +62,17 @@ class AcrobotEnv_d2(core.Env):
 
     dt = .025
 
-    LINK_LENGTH_1 = 0.397  # [m]
-    LINK_LENGTH_2 = 0.105  # [m]
-    LINK_MASS_1 = 0.801  #: [kg] mass of link 1
-    LINK_MASS_2 = 0.758  #: [kg] mass of link 2
-    LINK_COM_POS_1 = 0.171  #: [m] position of the center of mass of link 1
-    LINK_COM_POS_2 = 0.071408  #: [m] position of the center of mass of link 2
-    LINK_MOI1 = 0.046141652  #: [kg m^2] moments of inertia for both links
-    LINK_MOI2 = 0.000534900857  #: [kg m^2] moments of inertia for both links
+    LINK_LENGTH_1 = 0.393  # [m]
+    LINK_LENGTH_2 = 0.116  # [m]
+    LINK_MASS_1 = 1.109  #: [kg] mass of link 1
+    LINK_MASS_2 = 0.142  #: [kg] mass of link 2
+    LINK_COM_POS_1 = 0.226528  #: [m] position of the center of mass of link 1
+    LINK_COM_POS_2 = 0.069335  #: [m] position of the center of mass of link 2
+    LINK_MOI1 = 0.089616835  #: [kg m^2] moments of inertia for both links
+    LINK_MOI2 = 0.000804341  #: [kg m^2] moments of inertia for both links
 
     MAX_VEL_1 = 4 * pi #: [rad/s]
-    MAX_VEL_2 = 32 * 2 * pi / 60 # [rad/s]
+    MAX_VEL_2 = 45 * 2 * pi / 60 # [rad/s]
     MAX_TORQUE = 0.7
     AVAIL_DIRECTION = [-100, +10]
     ACCEL_RATIO = 0.2

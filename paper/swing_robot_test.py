@@ -1,11 +1,11 @@
-import sys, os, time
+import os
 import numpy as np
 import gym
 import tensorflow as tf
 import cv2
 
 # >>>>>>>>>>>>>>>>
-original_model_path = './pre_logs/Acrobot-v1_05-19_13h-06m-09s'
+original_model_path = os.path.join(os.curdir,'pre_logs', 'Acrobot-v1_05-18_18h-55m-42s')
 # <<<<<<<<<<<<<<<<
 
 # Learning CONSTANT VALUE
@@ -35,16 +35,13 @@ hidden_n = 128
 img_shape = env.render('rgb_array').shape[:2]
 # Settings for Summary Writer of Tensorboard
 # ex) Acrobot-v1_'05-14_11:04:29
-start_time = time.strftime('%m-%d_%Hh-%Mm-%Ss', time.localtime())
-log_dir = os.path.join(os.curdir,'logs','Acrobot-v2_TEST_'+start_time)
-summary_writer = tf.summary.create_file_writer(log_dir)
-os.makedirs(os.path.join(log_dir, 'video'))
+summary_writer = tf.summary.create_file_writer(original_model_path)
 
 model = tf.keras.models.load_model(os.path.join(original_model_path, 'tf_model'))
 
 
 state = env.reset()
-video_dir = os.path.join(os.curdir,'logs','Acrobot-v2_TEST_'+start_time,f'test.avi')
+video_dir = os.path.join(original_model_path, 'test.avi')
 videoWriter = cv2.VideoWriter(video_dir,fourcc, 15, img_shape)
 for step in range(1, MAX_STEP+1):
     state = tf.convert_to_tensor(state)
