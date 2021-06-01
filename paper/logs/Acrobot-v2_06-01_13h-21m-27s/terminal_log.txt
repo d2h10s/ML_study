@@ -1,0 +1,14 @@
+
+using acrobot-v2 environment which is d2h10s edition v2.0
+definition of reward : [reward = -abs(cos(theta_1))]
+termination condition: [None]
+
+
+EMA reward:   -972.13 at episode     0 --freq:  0.640 --sigma:  64.11 --time:06-01_13h-21m-33s 
+EMA reward:   -910.63 at episode     1 --freq:  0.640 --sigma:  97.15 --time:06-01_13h-21m-37s 
+EMA reward:   -937.09 at episode     2 --freq:  0.640 --sigma:  95.27 --time:06-01_13h-21m-42s 
+EMA reward:   -954.12 at episode     3 --freq:  0.680 --sigma: 120.06 --time:06-01_13h-21m-46s 
+EMA reward:   -967.75 at episode     4 --freq:  0.640 --sigma:  77.59 --time:06-01_13h-21m-50s 
+EMA reward:   -920.00 at episode     5 --freq:  0.680 --sigma:  66.10 --time:06-01_13h-21m-54s 
+EMA reward:   -964.70 at episode     6 --freq:  0.680 --sigma:  89.13 --time:06-01_13h-21m-58s 
+EMA reward:   -961.51 at episode     7 --freq:  0.680 --sigma:  67.70 --time:06-01_13h-22m-02s 
