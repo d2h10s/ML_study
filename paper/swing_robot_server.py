@@ -14,15 +14,16 @@ MAX_STEP = int(1e3)
 SEED = 3 # random seed
 EPS = np.finfo(np.float32).eps.item()
 MAX_DONE = 100 # condition which terminate episode
-MAX_REWARD = -500 # condition which terminate learning
+MAX_REWARD = -450 # condition which terminate learning
 ALPHA = 0.05 # for the exponential moving everage
-LEARNING_RATE = 4e-4
+LEARNING_RATE = 5e-4
 EPSILON = 1e-3
 INIT_MESSAGE = '''
 using acrobot-v2 environment which is d2h10s edition v2.0
 definition of reward : [reward = -abs(cos(theta_1))]
 termination condition: [None]
 '''
+SUFFIX = "_5e-4"
 
 
 def fft(deg_list):
@@ -84,6 +85,7 @@ def yaml_backup(episode, EMA_reward, episode_reward, now_time, now_time_str):
                     'EPISODE_REWARD':   float(episode_reward)}
         yaml.dump(yaml_data, f)
 
+
 def run_test():
     state = env.reset()
     for step in range(1, MAX_STEP):
@@ -103,13 +105,10 @@ def run_test():
 # Settings for Summary Writer of Tensorboard
 # ex) Acrobot-v1_'05-14_11:04:29
 start_time = utc.localize(dt.utcnow()).astimezone(timezone('Asia/Seoul'))
-start_time_str = dt.strftime(start_time, '%m-%d_%Hh-%Mm-%Ss')
-log_dir = os.path.join(os.curdir,'logs','Acrobot-v2_'+start_time_str)
+start_time_str = dt.strftime(start_time, '%m%d_%H-%M-%S')
+log_dir = os.path.join(os.curdir,'logs','Acrobot-v2_'+start_time_str+SUFFIX)
 summary_writer = tf.summary.create_file_writer(log_dir)
 shutil.copy(src=os.path.abspath(__file__), dst=os.path.join(log_dir,'source.py'))
-
-
-
 
 # Environment creation
 env = gym.make('Acrobot-v2')
@@ -236,18 +235,18 @@ while True:
             tf.summary.image(f'fft of episode{episode:05}', plot_img, step=0)
     
     del deg_list
-    del tape
-    del grads
+    del tape, grads
     del actor_losses, critic_losses
     del action_probs_buffer, critic_value_buffer
-    del Returns
-    del rewards_history
+    del rewards_history, Returns
 
     # >>> for monitoring
     with summary_writer.as_default():
         tf.summary.scalar('losses', loss_value, step=episode)
         tf.summary.scalar('reward of episodes', episode_reward, step=episode)
         tf.summary.scalar('EMA reward of episodes', EMA_reward, step=episode)
+        tf.summary.scalar('frequency of episodes', most_freq, step=episode)
+        tf.summary.scalar('sigma of episodes', sigma, step=episode)
     # <<< for monitoring
     
     now_time = utc.localize(dt.utcnow()).astimezone(timezone('Asia/Seoul'))
