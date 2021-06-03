@@ -34,14 +34,14 @@ def fft(deg_list):
     k = np.arange(n)
     T = n/Fs
     freq = k/T
-    freq = freq[range(scale)]
+    freq = freq[range(1,scale)]
     fft_data = np.fft.fft(deg_list)/n
-    fft_data = fft_data[range(scale)]
+    fft_data = fft_data[range(1,scale)]
     fft_mag_data = np.abs(fft_data)
     most_freq = freq[np.argmax(fft_mag_data)]
     x = np.arange(n)*Ts
     sigma = np.max(fft_mag_data)/np.mean(fft_mag_data)
-    plt.figure(figsize=(15,10))
+    plt.figure(figsize=(10,5))
     plt.subplot(2,1,1)
     plt.title('FFT')
     plt.plot(x, deg_list)
@@ -131,20 +131,19 @@ if len(sys.argv) > 1:
     model = tf.keras.models.load_model(os.path.join(arg_dir, 'tf_model'))
     # load progress data
     with open(os.path.join(arg_dir, 'backup.yaml')) as f:
-        yaml_data = yaml.load(f)
-        episode = int(yaml_data['episode']) + 1
-        EMA_reward = int(yaml_data['EMA_reward'])
-        episode_reward = int(yaml_data['episode_reward'])
-        GAMMA = GAMMA
-        MAX_STEP = MAX_STEP
-        SEED = SEED
-        EPS = EPS
-        MAX_DONE = MAX_DONE
-        MAX_REWARD = MAX_REWARD
-        ALPHA = ALPHA
-        LEARNING_RATE = LEARNING_RATE
-        EPSILON = EPSILON
-
+        yaml_data       = yaml.load(f)
+        episode         = int(yaml_data['episode']) + 1
+        EMA_reward      = int(yaml_data['EMA_reward'])
+        episode_reward  = int(yaml_data['episode_reward'])
+        GAMMA           = float(yaml_data['GAMMA'])
+        MAX_STEP        = int(yaml_data['MAX_STEP'])
+        SEED            = int(yaml_data['SEED'])
+        EPS             = float(yaml_data['EPS'])
+        MAX_DONE        = int(yaml_data['MAX_DONE'])
+        MAX_REWARD      = float(yaml_data['MAX_REWARD'])
+        ALPHA           = float(yaml_data['ALPHA'])
+        LEARNING_RATE   = float(yaml_data['LEARNING_RATE'])
+        EPSILON         = float(yaml_data['EPSILON'])
     with open(os.path.join(log_dir, 'terminal_log.txt'), 'a') as f:
         f.write(log_dir+'\n')
         f.write('model data loaded from '+ arg_dir +'\n')
@@ -171,7 +170,6 @@ episode = 0
 while True:
     state = env.reset()
     episode_reward = 0
-    done_count = 0
     discounted_sum = 0
     deg_list = []
     action_probs_buffer = []
