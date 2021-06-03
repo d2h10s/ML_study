@@ -227,34 +227,10 @@ while True:
     with summary_writer.as_default():
             tf.summary.scalar('running reward of episodes', running_reward, step=episode)
     # <<< for monitoring
-
-    if running_reward > MAX_REWARD:  # Co.ndition to consider the task solved
-        print(f"Solved at episode {episode} with running reward {running_reward}")
-        break
+    break
     
-    episode += 1
-
-
-state = env.reset()
-if IS_CPU:
-    video_dir = os.path.join(os.curdir,'logs','Acrobot-v1_'+start_time,f'test.avi')
-    videoWriter = cv2.VideoWriter(video_dir,fourcc, 15, img_shape)
-for step in range(1, MAX_STEP):
-    state = tf.convert_to_tensor(state)
-    state = tf.expand_dims(state, 0)
-
-    action_probs, critic_value = model(state)
-
-    action = np.argmax(action_probs)
-    state, _, done, _ = env.step(action)
-    radian = np.arctan2(state[1], state[0]) # angle of link1
-    img = env.render(mode="rgb_array")
-
-    with summary_writer.as_default():
-        tf.summary.scalar('test angle of link1', np.rad2deg(radian), step=step)
-    
-    if IS_CPU:
-        img = env.render(mode='rgb_array').astype(np.float32)
-        cv2.putText(img=img,text=f'TEST: Step({step:04})', org=(50,50), fontFace=font, fontScale=1,color=blue_color, thickness=1, lineType=0)
-        videoWriter.write(img.astype(np.ubyte))
-videoWriter.release()
+with summary_writer.as_default(): #텐서 보드 (그래프 추가)
+  tf.summary.trace_export(
+      name='graph',
+      step=0,
+      profiler_outdir='tensorboard/iris_species_classification_model/train')
