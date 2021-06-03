@@ -16,14 +16,14 @@ EPS = np.finfo(np.float32).eps.item()
 MAX_DONE = 100 # condition which terminate episode
 MAX_REWARD = -400 # condition which terminate learning
 ALPHA = 0.05 # for the exponential moving everage
-LEARNING_RATE = 5e-4
+LEARNING_RATE = 3e-3
 EPSILON = 1e-3
 INIT_MESSAGE = '''
 using acrobot-v2 environment which is d2h10s edition v2.0
 definition of reward : [reward = -abs(cos(theta_1))]
 termination condition: [None]
 '''
-SUFFIX = "_5e-4"
+SUFFIX = "_3e-3"
 
 
 def fft(deg_list):
