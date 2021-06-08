@@ -16,14 +16,14 @@ EPS = np.finfo(np.float32).eps.item()
 MAX_DONE = 100 # condition which terminate episode
 MAX_REWARD = -400 # condition which terminate learning
 ALPHA = 0.05 # for the exponential moving everage
-LEARNING_RATE = 3e-4
+LEARNING_RATE = 1e-3
 EPSILON = 1e-3
 INIT_MESSAGE = '''
 using acrobot-v2 environment which is d2h10s edition v2.0
 definition of reward : [reward = -abs(cos(theta_1))]
 termination condition: [None]
 '''
-SUFFIX = "_3e-4"
+SUFFIX = "_1e-3"
 
 
 def fft(deg_list):
@@ -256,7 +256,7 @@ while True:
     
     yaml_backup(episode, EMA_reward, episode_reward, now_time, now_time_str)
     
-    if EMA_reward > MAX_REWARD:
+    if 100 < sigma < 200 and 0.3 < most_freq < 0.5:
         print(f"Solved at episode {episode} with EMA reward {EMA_reward}")
         with summary_writer.as_default():
             tf.summary.image(f'fft of final episode{episode:05}', plot_img, step=0)
