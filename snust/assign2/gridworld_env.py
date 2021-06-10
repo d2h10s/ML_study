@@ -67,7 +67,7 @@ class gridworld:
         self.gw.plot([self.current_state[0]],[self.current_state[1]], 'r*', markersize =20)
         if AA!=None:
             for j in self.state:
-                self.gw.text(j[0]+0.1,j[1]+0.1,np.round(AA[j],2),fontsize=10)
+                self.gw.text(j[0]+0.1,j[1]+0.1,np.round(AA[j],3),fontsize=10)
         
         plt.show()
     
