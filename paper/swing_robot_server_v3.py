@@ -13,17 +13,16 @@ GAMMA = .99
 MAX_STEP = int(1e3)
 SEED = 3 # random seed
 EPS = np.finfo(np.float32).eps.item()
-MAX_DONE = 100 # condition which terminate episode
 MAX_REWARD = -400 # condition which terminate learning
 ALPHA = 0.05 # for the exponential moving everage
 LEARNING_RATE = 1e-3
 EPSILON = 1e-3
 INIT_MESSAGE = '''
-using acrobot-v2 environment which is d2h10s edition v2.0
+using acrobot-v2 environment which is d2h10s edition v3.0
 definition of reward : [reward = -abs(cos(theta_1))]
 termination condition: [None]
 '''
-SUFFIX = "_1e-3"
+SUFFIX = ""
 
 
 def fft(deg_list):
@@ -75,7 +74,6 @@ def yaml_backup(episode, EMA_reward, episode_reward, now_time, now_time_str):
                     'MAX_STEP':         MAX_STEP,\
                     'SEED':             SEED,\
                     'EPS':              EPS,\
-                    'MAX_DONE':         MAX_DONE,\
                     'MAX_REWARD':       MAX_REWARD,\
                     'ALPHA':            ALPHA,\
                     'LEARNING_RATE':    LEARNING_RATE,\
@@ -139,7 +137,6 @@ if len(sys.argv) > 1:
         MAX_STEP = MAX_STEP
         SEED = SEED
         EPS = EPS
-        MAX_DONE = MAX_DONE
         MAX_REWARD = MAX_REWARD
         ALPHA = ALPHA
         LEARNING_RATE = LEARNING_RATE
@@ -216,15 +213,15 @@ while True:
         history = zip(action_probs_buffer, critic_value_buffer, Returns)
         actor_losses = []
         critic_losses = []
-        for log_prob, value, ret in history:
-            diff = ret - value
-            actor_losses.append(-log_prob * diff)
-            critic_losses.append(huber_loss(tf.expand_dims(value, 0), tf.expand_dims(ret, 0)))
+        for log_prob, value, Return in history:
+            advantage = Return - value
+            actor_losses.append(-log_prob * advantage)
+            critic_losses.append(huber_loss(tf.expand_dims(value, 0), tf.stop_gradient(tf.expand_dims(advantage, 0))))
 
         loss_value = sum(actor_losses) + sum(critic_losses)
 
-        grads = tape.gradient(loss_value, model.trainable_variables)
-        optimizer.apply_gradients(zip(grads, model.trainable_variables))
+    grads = tape.gradient(loss_value, model.trainable_variables)
+    optimizer.apply_gradients(zip(grads, model.trainable_variables))
     
 
     most_freq, sigma, plot_img = fft(deg_list)

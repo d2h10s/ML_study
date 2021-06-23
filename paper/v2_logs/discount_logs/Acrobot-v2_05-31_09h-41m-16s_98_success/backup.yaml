@@ -1,0 +1,12 @@
+ALPHA: 0.05
+EPS: 1.1920928955078125e-07
+GAMMA: 0.98
+MAX_DONE: 100
+MAX_REWARD: -500
+MAX_STEP: 1000
+SEED: 3
+end_time: 05-31_13h-37m-52s
+episode: 1850
+episode_reward: -545.8410748542157
+running_reward: -534.3054223601824
+start_time: 05-31_09h-41m-16s

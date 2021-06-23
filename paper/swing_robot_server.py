@@ -179,7 +179,8 @@ while True:
 
     with tf.GradientTape(persistent=False) as tape:
         for step in range(1, MAX_STEP+1):
-            state = tf.convert_to_tensor([state])
+            state = tf.expand_dims(state, axis=0)
+            state = tf.convert_to_tensor(state)
 
             # action_probs = tf.Tensor([[0.24805994 0.44228017 0.30965984]]
             # critic_value = tf.Tensor([[-0.24254985]]
