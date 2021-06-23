@@ -216,7 +216,7 @@ while True:
         for log_prob, value, Return in history:
             advantage = Return - value
             actor_losses.append(-log_prob * advantage)
-            critic_losses.append(huber_loss(tf.expand_dims(value, 0), tf.stop_gradient(tf.expand_dims(advantage, 0))))
+            critic_losses.append(huber_loss(tf.expand_dims(value, 0), tf.expand_dims(advantage, 0)))
 
         loss_value = sum(actor_losses) + sum(critic_losses)
 
