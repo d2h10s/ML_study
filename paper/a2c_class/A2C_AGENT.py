@@ -96,8 +96,8 @@ class a2c_agent():
                     action_probs_buffer.append(action_probs[0, action])
                     critic_value_buffer.append(critic_value[0, 0])
 
-                    new_state, _, _, _ = self.env.step(action)
-                    reward = -np.abs(new_state[0])
+                    state, _, _, _ = self.env.step(action)
+                    reward = -np.abs(state[0])
 
                     rewards_history.append(reward)
                     self.episode_reward += reward
@@ -106,7 +106,7 @@ class a2c_agent():
                         self.EMA_reward = self.episode_reward
                     else:
                         self.EMA_reward = self.ALPHA * self.episode_reward + (1 - self.ALPHA) * self.EMA_reward
-                    deg = np.rad2deg(np.arctan2(new_state[1], new_state[0]))
+                    deg = np.rad2deg(np.arctan2(state[1], state[0]))
                     deg_list.append(deg)
 
                 action_probs_buffer = tf.math.log(action_probs_buffer)

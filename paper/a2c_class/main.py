@@ -27,7 +27,6 @@ observation_n = env.observation_space.shape[0]
 hidden_n = 128
 action_n = env.action_space.n
 
-print(observation_n)
 model = a2c_model(observation_n, hidden_n, action_n)
 agent = a2c_agent(model, lr=1e-3, gamma=0.99, sampling_time=0.025, suffix="_test")
 agent.init_message(INIT_MESSAGE)
