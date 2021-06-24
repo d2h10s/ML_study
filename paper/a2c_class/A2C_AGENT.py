@@ -27,11 +27,14 @@ class a2c_agent():
         self.start_time_str = dt.strftime(self.start_time, '%m%d_%H-%M-%S')
         self.log_dir = os.path.join(os.curdir,'logs','Acrobot-v2_'+self.start_time_str+self.SUFFIX)
         self.summary_writer = tf.summary.create_file_writer(self.log_dir)
-        shutil.copy(src=os.path.abspath(__file__), dst=os.path.join(self.log_dir,'source.py'))
+        shutil.copy(src=os.path.abspath(__file__), dst=os.path.join(self.log_dir,'A2C_AGENT.py'))
 
         self.optimizer = optimizers.Adam(learning_rate=self.LEARNING_RATE, epsilon=self.EPSILON)
         self.huber_loss = keras.losses.Huber()
 
+    def init_message(self, msg):
+        with open(os.path.join(self.log_dir, 'terminal_log.txt'), 'a') as f:
+            f.write(msg+'\n\n')
     def fft(self, deg_list):
         Fs = 1/self.sampling_time
         n = len(deg_list)
@@ -71,8 +74,9 @@ class a2c_agent():
         return most_freq, sigma, plot_image
 
     def train(self, env):
+        self.env = env
         while True:
-            state = env.reset()
+            state = self.env.reset()
             self.episode_reward = 0
             discounted_sum = 0
             deg_list = []
@@ -92,7 +96,7 @@ class a2c_agent():
                     action_probs_buffer.append(action_probs[0, action])
                     critic_value_buffer.append(critic_value[0, 0])
 
-                    new_state, _, _, _ = env.step(action)
+                    new_state, _, _, _ = self.env.step(action)
                     reward = -np.abs(new_state[0])
 
                     rewards_history.append(reward)
@@ -166,7 +170,8 @@ class a2c_agent():
             self.num_episode += 1
 
     def run_test(self, env):
-        state = env.reset()
+        self.env = env
+        state = self.env.reset()
         for step in range(1, self.MAX_STEP):
             state = tf.convert_to_tensor(state)
             state = tf.expand_dims(state, 0)
@@ -174,7 +179,7 @@ class a2c_agent():
             action_probs, _ = self.model(state)
 
             action = np.argmax(action_probs)
-            state, *_ = env.step(action)
+            state, *_ = self.env.step(action)
             radian = np.arctan2(state[1], state[0]) # angle of link1
 
             with self.summary_writer.as_default():
