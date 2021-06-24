@@ -80,20 +80,21 @@ class a2c_agent():
             critic_value_buffer = []
             rewards_history = []
             Returns = []
+            actor_losses = []
+            critic_losses = []
 
             with tf.GradientTape(persistent=False) as tape:
                 for step in range(1, self.MAX_STEP+1):
                     state = tf.convert_to_tensor(state)
-                    #state = tf.expand_dims(state, axis=0)
 
                     action_probs, critic_value = self.model(state)
                     action = np.random.choice(self.model.action_n, p=np.squeeze(action_probs))
                     action_probs_buffer.append(action_probs[0, action])
                     critic_value_buffer.append(critic_value[0, 0])
-                       
+
                     new_state, _, _, _ = env.step(action)
                     reward = -np.abs(new_state[0])
-        
+
                     rewards_history.append(reward)
                     self.episode_reward += reward
 
@@ -103,9 +104,9 @@ class a2c_agent():
                         self.EMA_reward = self.ALPHA * self.episode_reward + (1 - self.ALPHA) * self.EMA_reward
                     deg = np.rad2deg(np.arctan2(new_state[1], new_state[0]))
                     deg_list.append(deg)
-                    
+
                 action_probs_buffer = tf.math.log(action_probs_buffer)
-                
+
                 for r in rewards_history[::-1]:
                     discounted_sum = r + self.GAMMA * discounted_sum
                     Returns.insert(0, discounted_sum)
@@ -115,12 +116,10 @@ class a2c_agent():
                 Returns = Returns.tolist()
 
                 history = zip(action_probs_buffer, critic_value_buffer, Returns)
-                actor_losses = []
-                critic_losses = []
-                for log_prob, value, ret in history:
-                    diff = ret - value
-                    actor_losses.append(-log_prob * diff)
-                    critic_losses.append(self.huber_loss(tf.expand_dims(value, 0), tf.expand_dims(ret, 0)))
+                for log_prob, value, Return in history:
+                    advantage = Return - value
+                    actor_losses.append(-log_prob * advantage)
+                    critic_losses.append(self.huber_loss(tf.expand_dims(value, 0), tf.expand_dims(Return, 0)))
 
                 loss_value = sum(actor_losses) + sum(critic_losses)
 
@@ -155,9 +154,9 @@ class a2c_agent():
             print(log_text)
             with open(os.path.join(self.log_dir, 'terminal_log.txt'), 'a') as f:
                 f.write(log_text+'\n')
-            
+
             self.yaml_backup()
-            
+
             if 100 < sigma < 200 and 0.3 < most_freq < 0.5:
                 print(f"Solved at episode {self.num_episode} with EMA reward {self.EMA_reward}")
                 with self.summary_writer.as_default():
