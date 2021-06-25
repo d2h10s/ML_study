@@ -1,11 +1,7 @@
-import tensorflow as tf
-import numpy as np
-import gym
-import time, os
-import matplotlib.pyplot as plt
-original_path = os.path.join(os.curdir,'logs', 'Acrobot-v2_05-28_13h-56m-33s_fail')
-original_model_path = os.path.join(original_path, 'tf_model')
+import os, shutil
 
-li = os.listdir(original_model_path)
-M=li[np.argmax([int(x[13:]) for x in li])]
-print(M)
+def file_backkup(log_dir):
+    file_name_list = os.listdir(os.getcwd())
+    file_path_list = [os.path.join(os.getcwd(),x) for x in file_name_list if '.py' in x]
+    for fname, fpath in zip(file_name_list, file_path_list):
+        shutil.copy(src=fpath, dst=os.path.join(log_dir,fname))

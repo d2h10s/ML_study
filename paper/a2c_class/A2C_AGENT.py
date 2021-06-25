@@ -1,6 +1,5 @@
-import sys, io, os, yaml, shutil
+import io, os, yaml
 import numpy as np
-import gym
 import matplotlib.pyplot as plt
 import tensorflow as tf
 from tensorflow import keras
@@ -9,15 +8,17 @@ from pytz import timezone, utc
 from datetime import datetime as dt
 
 class a2c_agent():
-    def __init__(self, model, lr=1e-3, gamma=0.99, alpha=0.05, max_step=1000, sampling_time=0.025, suffix=""):
-        self.GAMMA = gamma
-        self.MAX_STEP = max_step
+    def __init__(self, model, lr=1e-3, sampling_time=0.025, suffix=""):
+        self.model = model
+        self.GAMMA = .99
+        self.MAX_STEP = 1000
         self.EPS = np.finfo(np.float32).eps.item()
-        self.ALPHA = alpha
+        self.ALPHA = 0.01
         self.LEARNING_RATE = lr
         self.EPSILON = 1e-3
+        self.MAX_DONE = 20
+
         self.num_episode = 1
-        self.model = model
         self.episode_reward = 0
         self.EMA_reward = 0
         self.SUFFIX = suffix
@@ -27,7 +28,6 @@ class a2c_agent():
         self.start_time_str = dt.strftime(self.start_time, '%m%d_%H-%M-%S')
         self.log_dir = os.path.join(os.curdir,'logs','Acrobot-v2_'+self.start_time_str+self.SUFFIX)
         self.summary_writer = tf.summary.create_file_writer(self.log_dir)
-        shutil.copy(src=os.path.abspath(__file__), dst=os.path.join(self.log_dir,'A2C_AGENT.py'))
 
         self.optimizer = optimizers.Adam(learning_rate=self.LEARNING_RATE, epsilon=self.EPSILON)
         self.huber_loss = keras.losses.Huber()
@@ -74,9 +74,9 @@ class a2c_agent():
         return most_freq, sigma, plot_image
 
     def train(self, env):
-        self.env = env
+        done_cnt = 0
         while True:
-            state = self.env.reset()
+            state = env.reset()
             self.episode_reward = 0
             discounted_sum = 0
             deg_list = []
@@ -96,7 +96,7 @@ class a2c_agent():
                     action_probs_buffer.append(action_probs[0, action])
                     critic_value_buffer.append(critic_value[0, 0])
 
-                    state, _, _, _ = self.env.step(action)
+                    state, _, _, _ = env.step(action)
                     reward = -np.abs(state[0])
 
                     rewards_history.append(reward)
@@ -147,7 +147,6 @@ class a2c_agent():
             with self.summary_writer.as_default():
                 tf.summary.scalar('losses', loss_value, step=self.num_episode)
                 tf.summary.scalar('reward of episodes', self.episode_reward, step=self.num_episode)
-                tf.summary.scalar('EMA reward of episodes', self.EMA_reward, step=self.num_episode)
                 tf.summary.scalar('frequency of episodes', most_freq, step=self.num_episode)
                 tf.summary.scalar('sigma of episodes', sigma, step=self.num_episode)
             # <<< for monitoring
@@ -161,17 +160,19 @@ class a2c_agent():
 
             self.yaml_backup()
 
-            if 100 < sigma < 200 and 0.3 < most_freq < 0.5:
+            if 100 < sigma < 200 and 0.3 < most_freq < 0.55:
+                done_cnt += 1
+            else:
+                done_cnt = 0
+            if done_cnt > self.MAX_DONE:
                 print(f"Solved at episode {self.num_episode} with EMA reward {self.EMA_reward}")
                 with self.summary_writer.as_default():
                     tf.summary.image(f'fft of final episode{self.num_episode:05}', plot_img, step=0)
                 break
-
             self.num_episode += 1
 
     def run_test(self, env):
-        self.env = env
-        state = self.env.reset()
+        state = env.reset()
         for step in range(1, self.MAX_STEP):
             state = tf.convert_to_tensor(state)
             state = tf.expand_dims(state, 0)
@@ -179,7 +180,7 @@ class a2c_agent():
             action_probs, _ = self.model(state)
 
             action = np.argmax(action_probs)
-            state, *_ = self.env.step(action)
+            state, *_ = env.step(action)
             radian = np.arctan2(state[1], state[0]) # angle of link1
 
             with self.summary_writer.as_default():
