@@ -35,6 +35,7 @@ class a2c_agent():
     def init_message(self, msg):
         with open(os.path.join(self.log_dir, 'terminal_log.txt'), 'a') as f:
             f.write(msg+'\n\n')
+
     def fft(self, deg_list):
         Fs = 1/self.sampling_time
         n = len(deg_list)
