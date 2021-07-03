@@ -1,4 +1,4 @@
-import io, os, yaml
+import io, os, yaml, time
 import numpy as np
 import matplotlib.pyplot as plt
 import tensorflow as tf
@@ -83,100 +83,106 @@ class a2c_agent():
     def train(self, env):
         done_cnt = 0
         while True:
-            state = env.reset()
-            self.episode_reward = 0
-            discounted_sum = 0
-            deg_list = []
-            action_probs_buffer = []
-            critic_value_buffer = []
-            rewards_history = []
-            Returns = []
-            actor_losses = []
-            critic_losses = []
+            try:
+                start_time = time.time()
+                state = env.reset()
+                self.episode_reward = 0
+                discounted_sum = 0
+                deg_list = []
+                action_probs_buffer = []
+                critic_value_buffer = []
+                rewards_history = []
+                Returns = []
+                actor_losses = []
+                critic_losses = []
+                with tf.GradientTape(persistent=False) as tape:
+                    for step in range(1, self.MAX_STEP+1):
+                        state = tf.convert_to_tensor(state)
 
-            with tf.GradientTape(persistent=False) as tape:
-                for step in range(1, self.MAX_STEP+1):
-                    state = tf.convert_to_tensor(state)
+                        action_probs, critic_value = self.model(state)
+                        action = np.random.choice(self.model.action_n, p=np.squeeze(action_probs))
+                        action_probs_buffer.append(action_probs[0, action])
+                        critic_value_buffer.append(critic_value[0, 0])
 
-                    action_probs, critic_value = self.model(state)
-                    action = np.random.choice(self.model.action_n, p=np.squeeze(action_probs))
-                    action_probs_buffer.append(action_probs[0, action])
-                    critic_value_buffer.append(critic_value[0, 0])
+                        state = env.step(action)
+                        reward = -np.abs(state[0])
 
-                    state, _, _, _ = env.step(action)
-                    reward = -np.abs(state[0])
+                        rewards_history.append(reward)
+                        self.episode_reward += reward
 
-                    rewards_history.append(reward)
-                    self.episode_reward += reward
+                        if self.num_episode == 0:
+                            self.EMA_reward = self.episode_reward
+                        else:
+                            self.EMA_reward = self.ALPHA * self.episode_reward + (1 - self.ALPHA) * self.EMA_reward
+                        deg = np.rad2deg(np.arctan2(state[1], state[0]))
+                        deg_list.append(deg)
 
-                    if self.num_episode == 0:
-                        self.EMA_reward = self.episode_reward
-                    else:
-                        self.EMA_reward = self.ALPHA * self.episode_reward + (1 - self.ALPHA) * self.EMA_reward
-                    deg = np.rad2deg(np.arctan2(state[1], state[0]))
-                    deg_list.append(deg)
+                    action_probs_buffer = tf.math.log(action_probs_buffer)
 
-                action_probs_buffer = tf.math.log(action_probs_buffer)
+                    for r in rewards_history[::-1]:
+                        discounted_sum = r + self.GAMMA * discounted_sum
+                        Returns.insert(0, discounted_sum)
 
-                for r in rewards_history[::-1]:
-                    discounted_sum = r + self.GAMMA * discounted_sum
-                    Returns.insert(0, discounted_sum)
+                    Returns = np.array(Returns)
+                    Returns = (Returns - np.mean(Returns)) / (np.std(Returns) + self.EPS)
+                    Returns = Returns.tolist()
 
-                Returns = np.array(Returns)
-                Returns = (Returns - np.mean(Returns)) / (np.std(Returns) + self.EPS)
-                Returns = Returns.tolist()
+                    history = zip(action_probs_buffer, critic_value_buffer, Returns)
+                    for log_prob, value, Return in history:
+                        advantage = Return - value
+                        actor_losses.append(-log_prob * advantage)
+                        critic_losses.append(self.huber_loss(tf.expand_dims(value, 0), tf.expand_dims(Return, 0)))
 
-                history = zip(action_probs_buffer, critic_value_buffer, Returns)
-                for log_prob, value, Return in history:
-                    advantage = Return - value
-                    actor_losses.append(-log_prob * advantage)
-                    critic_losses.append(self.huber_loss(tf.expand_dims(value, 0), tf.expand_dims(Return, 0)))
+                    loss_value = sum(actor_losses) + sum(critic_losses)
 
-                loss_value = sum(actor_losses) + sum(critic_losses)
+                    grads = tape.gradient(loss_value, self.model.trainable_variables)
+                    self.optimizer.apply_gradients(zip(grads, self.model.trainable_variables))
 
-                grads = tape.gradient(loss_value, self.model.trainable_variables)
-                self.optimizer.apply_gradients(zip(grads, self.model.trainable_variables))
-            
-            most_freq, sigma, plot_img = self.fft(deg_list)
+                most_freq, sigma, plot_img = self.fft(deg_list)
 
-            if self.num_episode % 100 == 0:
-                self.model.save(os.path.join(self.log_dir, 'tf_model', f'learing_model{self.num_episode}'))
+                if self.num_episode % 100 == 0:
+                    self.model.save(os.path.join(self.log_dir, 'tf_model', f'learing_model{self.num_episode}'))
+                    with self.summary_writer.as_default():
+                        tf.summary.image(f'fft of episode{self.num_episode:05}', plot_img, step=0)
+
+                del deg_list
+                del tape, grads
+                del actor_losses, critic_losses
+                del action_probs_buffer, critic_value_buffer
+                del rewards_history, Returns
+
+                # >>> for monitoring
                 with self.summary_writer.as_default():
-                    tf.summary.image(f'fft of episode{self.num_episode:05}', plot_img, step=0)
-            
-            del deg_list
-            del tape, grads
-            del actor_losses, critic_losses
-            del action_probs_buffer, critic_value_buffer
-            del rewards_history, Returns
+                    tf.summary.scalar('losses', loss_value, step=self.num_episode)
+                    tf.summary.scalar('reward of episodes', self.episode_reward, step=self.num_episode)
+                    tf.summary.scalar('frequency of episodes', most_freq, step=self.num_episode)
+                    tf.summary.scalar('sigma of episodes', sigma, step=self.num_episode)
+                # <<< for monitoring
 
-            # >>> for monitoring
-            with self.summary_writer.as_default():
-                tf.summary.scalar('losses', loss_value, step=self.num_episode)
-                tf.summary.scalar('reward of episodes', self.episode_reward, step=self.num_episode)
-                tf.summary.scalar('frequency of episodes', most_freq, step=self.num_episode)
-                tf.summary.scalar('sigma of episodes', sigma, step=self.num_episode)
-            # <<< for monitoring
-            
-            now_time = utc.localize(dt.utcnow()).astimezone(timezone('Asia/Seoul'))
-            now_time_str = dt.strftime(now_time, '%m-%d_%Hh-%Mm-%Ss')
-            log_text = "EMA reward: {:9.2f} at episode {:5} --freq:{:7.3f} --sigma:{:7.2f} --time:{} ".format(self.EMA_reward, self.num_episode, most_freq, sigma, now_time_str)
-            print(log_text)
-            with open(os.path.join(self.log_dir, 'terminal_log.txt'), 'a') as f:
-                f.write(log_text+'\n')
+                now_time = utc.localize(dt.utcnow()).astimezone(timezone('Asia/Seoul'))
+                now_time_str = dt.strftime(now_time, '%m-%d_%Hh-%Mm-%Ss')
+                log_text = "EMA reward: {:9.2f} at episode {:5} --freq:{:7.3f} --sigma:{:7.2f} --time:{} ".format(self.EMA_reward, self.num_episode, most_freq, sigma, now_time_str)
+                print(log_text)
+                with open(os.path.join(self.log_dir, 'terminal_log.txt'), 'a') as f:
+                    f.write(log_text+'\n')
 
-            self.yaml_backup()
+                self.yaml_backup()
 
-            if 100 < sigma < 200 and 0.3 < most_freq < 0.55:
-                done_cnt += 1
-            else:
-                done_cnt = 0
-            if done_cnt > self.MAX_DONE:
-                print(f"Solved at episode {self.num_episode} with EMA reward {self.EMA_reward}")
-                with self.summary_writer.as_default():
-                    tf.summary.image(f'fft of final episode{self.num_episode:05}', plot_img, step=0)
-                break
-            self.num_episode += 1
+                if 100 < sigma < 200 and 0.3 < most_freq < 0.55:
+                    done_cnt += 1
+                else:
+                    done_cnt = 0
+                if done_cnt > self.MAX_DONE:
+                    print(f"Solved at episode {self.num_episode} with EMA reward {self.EMA_reward}")
+                    with self.summary_writer.as_default():
+                        tf.summary.image(f'fft of final episode{self.num_episode:05}', plot_img, step=0)
+                    break
+                self.num_episode += 1
+                while time.time() - start_time < self.sampling_time:
+                    pass
+            except Exception as e:
+                print('An error occurred ', e)
+
 
     def run_test(self, env):
         state = env.reset()

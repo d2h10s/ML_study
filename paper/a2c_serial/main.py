@@ -27,8 +27,6 @@ termination condition: [None]
 env = a2c_serial()
 env.serial_open()
 
-SEED = 3
-
 observation_n = env.observation_space_n
 hidden_n = 128
 action_n = env.action_space_n
@@ -39,5 +37,3 @@ agent.init_message(INIT_MESSAGE)
 file_backup(agent.log_dir)
 
 agent.train(env)
-agent.run_test()
-
