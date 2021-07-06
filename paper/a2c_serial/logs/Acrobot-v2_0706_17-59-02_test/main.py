@@ -25,7 +25,7 @@ termination condition: [None]
 '''
 
 env = a2c_serial()
-while(env.serial_open(target_port='/dev/ttyACM1')):
+while(env.serial_open(target_port='/dev/ttyS0')):
     pass
 
 observation_n = env.observation_space_n

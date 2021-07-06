@@ -1,2 +1,2 @@
-a = 3
-assert a == 3
+for i in [1]:
+    print(i)

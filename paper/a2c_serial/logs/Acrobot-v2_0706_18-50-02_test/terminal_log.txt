@@ -1,0 +1,6 @@
+
+using acrobot-v2 environment which is d2h10s edition v3.0
+definition of reward : [reward = -abs(cos(theta_1))]
+termination condition: [None]
+
+

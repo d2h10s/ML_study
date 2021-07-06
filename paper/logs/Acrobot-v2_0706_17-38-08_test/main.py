@@ -9,7 +9,6 @@ from pytz import timezone, utc
 from datetime import datetime as dt
 from A2C_AGENT import a2c_agent
 from A2C_MODEL import a2c_model
-from A2C_SERIAL import a2c_serial
 
 
 def file_backup(log_dir):
@@ -24,17 +23,22 @@ definition of reward : [reward = -abs(cos(theta_1))]
 termination condition: [None]
 '''
 
-env = a2c_serial()
-while(env.serial_open(target_port='/dev/ttyACM1')):
-    pass
+env = gym.make('Acrobot-v2')
 
-observation_n = env.observation_space_n
+SEED = 3
+env.seed(SEED)
+env.action_space.seed(SEED)
+env.observation_space.seed(SEED)
+
+observation_n = env.observation_space.shape[0]
 hidden_n = 128
-action_n = env.action_space_n
+action_n = env.action_space.n
 
 model = a2c_model(observation_n, hidden_n, action_n)
-agent = a2c_agent(model, lr=1e-3, sampling_time=0.1, suffix="_test")
+agent = a2c_agent(model, lr=1e-3, sampling_time=0.025, suffix="_test")
 agent.init_message(INIT_MESSAGE)
 file_backup(agent.log_dir)
 
 agent.train(env)
+agent.run_test()
+
