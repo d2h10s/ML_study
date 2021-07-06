@@ -178,8 +178,11 @@ class a2c_agent():
                         tf.summary.image(f'fft of final episode{self.num_episode:05}', plot_img, step=0)
                     break
                 self.num_episode += 1
+                didWait = False
                 while time.time() - start_time < self.sampling_time:
-                    pass
+                    didWait = True
+                if didWait:
+                    print()
             except Exception as e:
                 print('An error occurred ', e)
 

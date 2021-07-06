@@ -42,41 +42,48 @@ class a2c_serial:
         for port in ports:
             try:
                 self.ser = serial.Serial(port, baudrate=115200, timeout=1, write_timeout=1)
-                self.ser.write(RST)
-                reply, data_type = self.read_line()
+                reply, data_type = self.write_command(RST)
                 if reply.startswith('STX,ACK') and data_type == COMMAND:
                     print(f'serial {port} found')
                     self.port = port
-                    self.ser.timeout(3)
-                    self.ser.write_timeout(3)
+                    self.ser.timeout = 3
+                    self.ser.write_timeout = 3
                     return True
                 else:
                     print(f'serial {port} found but NAK', reply)
             except (serial.SerialException):
                 pass
-        print('could not find serial device')
-        return False
+        print('could not find serial device\n')
+        self.serial_open()
 
-    def read_line(self):
-        rx_buffer = []
-        while self.ser.in_waiting:
-            rx_buffer.append(self.ser.read())
-        rx_string = bytes(rx_buffer).decode('utf-8')
-        if rx_string.startswith('@') and rx_string.endswith('!'):
+    def write_command(self, command):
+        self.ser.write(command)
+        rx_buffer = bytearray()
+        rx_byte = b''
+        byte_cnt = 0
+        while rx_byte != ord('!') and byte_cnt < 128:
+            if self.ser.in_waiting:
+                rx_byte = ord(self.ser.read())
+                rx_buffer.append(rx_byte)
+                byte_cnt += 1
+        rx_string = rx_buffer.decode('utf-8')
+        if rx_string.startswith('@'):
             rx_string = rx_string[:-1]
             data_type = 1
-        elif rx_string.startswith('STX') and rx_string.endswith('!'):
+        elif rx_string.startswith('STX'):
             rx_string = rx_string[:-1]
             data_type = 2
-        else:
+        elif byte_cnt >= 128:
             data_type = 0
-            print('could not recognize data:', rx_string)
+            print('could not recognize data1:', rx_buffer)
+        else:
+            data_type = -1
+            print('could not recognize data2:', rx_buffer)
 
         return rx_string, data_type
 
     def reset(self):
-        self.ser.write(RST)
-        reply, data_type = self.read_line()
+        reply, data_type = self.write_command(RST)
         if reply.startswith('STX,ACK') and data_type == COMMAND:
             print('wait for stabilization')
             start_time = time.time()
@@ -86,6 +93,7 @@ class a2c_serial:
                 print(f'\relapsed {elapsed_time:.2f}s and completed {elapsed_time/self.wait_time*100:6.2f}%', end='')
                 sleep(1)
             print('end reset')
+            self.max_angle = 0
             return self.get_observation()
         else:
             print('received unrecognized bytes', reply)
@@ -96,6 +104,7 @@ class a2c_serial:
             self.ser.write(GO_CW)
         else:       # action 0 is go down (counter clock wise)
             self.ser.write(GO_CCW)
+        print('end one step')
         return self.get_observation()
 
     def get_observation(self):
@@ -104,11 +113,8 @@ class a2c_serial:
             obs = self.reset()
             return obs
         while ret:
-            self.ser.write(ACQ)
-            rx_data, data_type = self.read_line()
-            if rx_data.startswith('@'):
-                print(rx_data, end='')
-            elif rx_data.startswith('STX,ACQ'):
+            rx_data, data_type = self.write_command(ACQ)
+            if data_type == COMMAND and rx_data.startswith('STX,ACQ'):
                 try:
                     # STX,ACQ,ROLL,VEL_ahrs,TEMP_ahrs,POS_mx106,VEL_mx106,TEMP_mx106
                     rx_data = rx_data.replace('STX,ACQ,', '').split(',')
@@ -132,7 +138,7 @@ class a2c_serial:
         cos_th2 = np.cos(mx106_pos)
         vel_th1 = ahrs_vel
         vel_th2 = mx106_vel
-        self.max_angle = np.abs(roll)
+        self.max_angle = np.abs(roll) if self.max_angle < np.abs(roll) else self.max_angle
         self.temp_ahrs = ahrs_temp
         self.temp_mx106 = mx106_temp
         observation = np.array([sin_th1, cos_th1, sin_th2, cos_th2, vel_th1, vel_th2], dtype=float)

@@ -32,7 +32,7 @@ hidden_n = 128
 action_n = env.action_space_n
 
 model = a2c_model(observation_n, hidden_n, action_n)
-agent = a2c_agent(model, lr=1e-3, sampling_time=0.025, suffix="_test")
+agent = a2c_agent(model, lr=1e-3, sampling_time=0.1, suffix="_test")
 agent.init_message(INIT_MESSAGE)
 file_backup(agent.log_dir)
 
