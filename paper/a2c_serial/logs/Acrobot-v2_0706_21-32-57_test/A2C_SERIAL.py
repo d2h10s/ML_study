@@ -54,8 +54,8 @@ class a2c_serial:
                     return True
                 else:
                     print(f'serial {port} found but NAK', reply)
-            except Exception as e:
-                print(port, e)
+            except (serial.SerialException):
+                pass
         print('could not find serial device\n')
         return False
 
@@ -65,8 +65,7 @@ class a2c_serial:
         rx_buffer = bytearray()
         rx_byte = b''
         byte_cnt = 0
-        start_time = time.time()
-        while rx_byte != ord('!') and time.time()-start_time < 3 and byte_cnt < 128:
+        while rx_byte != ord('!') and byte_cnt < 128:
             if self.ser.in_waiting:
                 rx_byte = ord(self.ser.read())
                 rx_buffer.append(rx_byte)

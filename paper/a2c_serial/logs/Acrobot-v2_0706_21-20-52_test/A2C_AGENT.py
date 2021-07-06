@@ -119,7 +119,7 @@ class a2c_agent():
                         didWait = False
                         while time.time() - start_time < self.sampling_time:
                             didWait = True
-                        if not didWait:
+                        if didWait:
                             print("never wait")
 
                     action_probs_buffer = tf.math.log(action_probs_buffer)

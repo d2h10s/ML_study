@@ -10,6 +10,7 @@ uint8_t buf_idx = 0;
 void setup() {
   Serial.begin(115200);
   Serial2.begin(115200);
+  while(!Serial);
   Serial2.println("<sor0>");
   delay(1000);
   while (Serial2.available()) Serial.write(Serial2.read());
@@ -25,6 +26,7 @@ void setup() {
   Serial2.println("<soa4>");
   delay(1000);
   while (Serial2.available()) Serial.write(Serial2.read());
+  Serial.println("Program start");
 }
 
 void loop() {
