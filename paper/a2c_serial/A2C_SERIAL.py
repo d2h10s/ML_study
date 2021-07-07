@@ -2,6 +2,8 @@ import sys, serial, glob, time
 import numpy as np
 from time import sleep
 
+DEBUG_ON = False
+
 STX = b'\x02'
 ETX = b'\x03'
 ACK = b'\x06'
@@ -12,7 +14,7 @@ RST = b'\x05'
 GO_CW = b'\x70'
 GO_CCW = b'\x71'
 
-DEBUGING = 1
+DEBUGGING = 1
 COMMAND = 2
 
 class a2c_serial:
@@ -54,23 +56,30 @@ class a2c_serial:
                     return True
                 else:
                     print(f'serial {port} found but NAK', reply)
+                    self.ser.close()
             except Exception as e:
                 print(port, e)
         print('could not find serial device\n')
         return False
 
+    def serial_close(self):
+        self.ser.close()
+
     def write_command(self, command):
-        print('start write')
+        if DEBUG_ON: print('start write')
         self.ser.write(command)
         rx_buffer = bytearray()
         rx_byte = b''
         byte_cnt = 0
         start_time = time.time()
-        while rx_byte != ord('!') and time.time()-start_time < 3 and byte_cnt < 128:
+        while rx_byte != ord('!') and time.time()-start_time < 10 and byte_cnt < 128:
             if self.ser.in_waiting:
                 rx_byte = ord(self.ser.read())
                 rx_buffer.append(rx_byte)
                 byte_cnt += 1
+        if rx_byte == b'':
+            print('received null byte')
+            self.write_command(command)
         try:
             rx_string = rx_buffer.decode('utf-8')
         except :
@@ -84,21 +93,22 @@ class a2c_serial:
         else:
             data_type = -1
             print('could not recognize data:', rx_buffer)
-        print('end write')
+        if DEBUG_ON: print('end write')
         return rx_string, data_type
 
     def reset(self):
-        print('start reset')
+        if DEBUG_ON: print('start reset')
         reply, data_type = self.write_command(RST)
         if reply.startswith('STX,ACK') and data_type == COMMAND:
             print('wait for stabilization')
             start_time = time.time()
             elapsed_time = 0
-            while elapsed_time < self.wait_time*140*4/np.pi*self.th1:
+            time_threshold = np.max(self.wait_time*140*4/np.pi*self.th1,10)
+            while elapsed_time < time_threshold:
                 elapsed_time = time.time() - start_time
                 print(f'\relapsed {elapsed_time:.2f}s and completed {elapsed_time/self.wait_time*100:6.2f}%', end='')
                 sleep(1)
-            print('end reset')
+            if DEBUG_ON: print('end reset')
             self.max_angle = 0
             return self.get_observation()
         else:
@@ -106,7 +116,7 @@ class a2c_serial:
             self.reset()
 
     def step(self, action):
-        print('start step')
+        if DEBUG_ON: print('start step')
         try:
             if action == 1:  # action 1 is go up (clock wise)
                 self.ser.write(GO_CW)
@@ -114,13 +124,13 @@ class a2c_serial:
                 self.ser.write(GO_CCW)
             else:
                 print('action is out of range', action)
-            print('end step')
+            if DEBUG_ON: print('end step')
             return self.get_observation()
-        except:
-            print("write error occurred in step function")
+        except Exception as e:
+            print("write error occurred in step function", e)
 
     def get_observation(self):
-        print('start obs')
+        if DEBUG_ON: print('start obs')
         assert self.ser.isOpen() == True
         rx_data, data_type = self.write_command(ACQ)
         if data_type == COMMAND and rx_data.startswith('STX,ACQ'):
@@ -135,9 +145,10 @@ class a2c_serial:
                 mx106_temp = float(rx_data[5])
                 #print('{:6.2f},{:6.2f},{:6.2f},{:6.2f},{:6.2f},{:6.2f}'.format(roll, ahrs_vel, ahrs_temp, mx106_pos, mx106_vel, mx106_temp))
             except Exception as e:
-                print(e, ' occurred with', rx_data)
+                print(e, ' occurred with', rx_data, 'in obs function')
         else:
             print('could not recognize ', rx_data)
+            self.get_observation()
         self.th1 = roll
         sin_th1 = np.sin(roll)
         cos_th1 = np.cos(roll)
@@ -150,7 +161,7 @@ class a2c_serial:
         self.temp_mx106 = mx106_temp
         observation = np.array([sin_th1, cos_th1, sin_th2, cos_th2, vel_th1, vel_th2], dtype=float)
         assert any(observation)
-        print('end obs')
+        if DEBUG_ON: print('end obs')
         return observation
 
     def get_temperature(self):

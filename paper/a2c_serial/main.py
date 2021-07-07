@@ -7,6 +7,7 @@ from tensorflow import keras
 from tensorflow.keras import layers, optimizers
 from pytz import timezone, utc
 from datetime import datetime as dt
+from time import sleep
 from A2C_AGENT import a2c_agent
 from A2C_MODEL import a2c_model
 from A2C_SERIAL import a2c_serial
@@ -26,7 +27,7 @@ termination condition: [None]
 
 env = a2c_serial()
 while not env.serial_open(target_port='COM3'):
-    pass
+    sleep(0.5)
 
 if __name__ == '__main__' and env.ser.isOpen():
     observation_n = env.observation_space_n
@@ -39,3 +40,5 @@ if __name__ == '__main__' and env.ser.isOpen():
     file_backup(agent.log_dir)
 
     agent.train(env)
+
+    env.serial_close()

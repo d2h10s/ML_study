@@ -83,7 +83,7 @@ class a2c_agent():
     def train(self, env):
         done_cnt = 0
         while True:
-            try:
+            #try:
                 state = env.reset()
                 self.episode_reward = 0
                 discounted_sum = 0
@@ -183,9 +183,10 @@ class a2c_agent():
                         tf.summary.image(f'fft of final episode{self.num_episode:05}', plot_img, step=0)
                     break
                 self.num_episode += 1
+                '''
             except Exception as e:
-                print('An error occurred ', e)
-                time.sleep(1000)
+                print(e, 'error occured in train loop')
+                time.sleep(1000)'''
 
 
     def run_test(self, env):
