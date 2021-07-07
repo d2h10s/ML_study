@@ -16,13 +16,6 @@ void setup() {
 }
 
 void loop() {
-  /*
-  if(!getEulerAngle()) Serial.println("read failed");
-  //if (Serial2.available()) Serial.write(Serial2.read());
-  if (Serial.available()) Serial2.write(Serial.read());
-  delay(1000);
-  */
-  
   Serial2.write(SOL);
   while(Serial2.available()){
     Serial.write(Serial2.read());

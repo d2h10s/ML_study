@@ -2,7 +2,9 @@
 DynamixelWorkbench wb;
 
 //FOR CONSTANT VARIABLES>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-#define BAUDRATE          115200  // motor and serial baudrate
+#define SERIAL_BAUDRATE   115200
+#define MOTOR_BAUDRATE    115200
+#define AHRS_BAUDRATE     115200
 #define SERIAL_DEVICE     "1"     // Serial1
 #define MX106_ID          1
 #define MX64_ID           2
@@ -50,7 +52,7 @@ bool isOnline                     = false;
 
 //MAIN PROGRAM>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 void setup() {
-  Serial.begin(BAUDRATE);
+  Serial.begin(SERIAL_BAUDRATE);
   Serial.setTimeout(180*1000);
   //while(!Serial);
   ahrs_init();
@@ -111,7 +113,7 @@ int status(){
 
 int motor_init(){
   const char* log;
-  is_MX106_on = wb.init(SERIAL_DEVICE, BAUDRATE, &log);
+  is_MX106_on = wb.init(SERIAL_DEVICE, MOTOR_BAUDRATE, &log);
   if (!is_MX106_on) {
     Serial.print("@Port Open Failed!");
     return 0;
@@ -138,7 +140,7 @@ void ahrs_init(){
   delay(500);
   digitalWrite(6, 1);
   delay(500);
-  Serial2.begin(BAUDRATE);
+  Serial2.begin(AHRS_BAUDRATE);
   Serial2.println("<sor0>");
   delay(1000);
   while (Serial2.available()) Serial2.read();

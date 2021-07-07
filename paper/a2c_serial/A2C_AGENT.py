@@ -82,8 +82,8 @@ class a2c_agent():
 
     def train(self, env):
         done_cnt = 0
-        while True:
-            #try:
+        while env.ser.isOpen():
+            try:
                 state = env.reset()
                 self.episode_reward = 0
                 discounted_sum = 0
@@ -145,7 +145,7 @@ class a2c_agent():
 
                 most_freq, sigma, plot_img = self.fft(deg_list)
 
-                if self.num_episode % 100 == 0:
+                if self.num_episode % 100 == 0 or self.num_episode == 1:
                     self.model.save(os.path.join(self.log_dir, 'tf_model', f'learing_model{self.num_episode}'))
                     with self.summary_writer.as_default():
                         tf.summary.image(f'fft of episode{self.num_episode:05}', plot_img, step=0)
@@ -183,10 +183,9 @@ class a2c_agent():
                         tf.summary.image(f'fft of final episode{self.num_episode:05}', plot_img, step=0)
                     break
                 self.num_episode += 1
-                '''
             except Exception as e:
                 print(e, 'error occured in train loop')
-                time.sleep(1000)'''
+                time.sleep(1000)
 
 
     def run_test(self, env):
